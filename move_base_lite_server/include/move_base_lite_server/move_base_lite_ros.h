@@ -35,7 +35,12 @@
 
 #include <grid_map_planner_lib/grid_map_planner.h>
 
+#include <actionlib/server/simple_action_server.h>
+#include <move_base_msgs/MoveBaseAction.h>
+
 namespace move_base_lite{
+
+  typedef actionlib::SimpleActionServer<move_base_msgs::MoveBaseAction> MoveBaseActionServer;
 
 class MoveBaseLiteRos
 {
@@ -43,6 +48,14 @@ public:
   MoveBaseLiteRos(ros::NodeHandle& nh_, ros::NodeHandle& pnh_);
 
 protected:
+  void simpleGoalCallback(const geometry_msgs::PointStampedConstPtr goal);
+
+  ros::Subscriber simple_goal_sub_;
+
+  ros::Publisher path_pub_;
+
+  boost::shared_ptr<MoveBaseActionServer> as_;
+
   boost::shared_ptr<tf::TransformListener> tfl_;
   boost::shared_ptr<grid_map_planner::GridMapPlanner> grid_map_planner_;
 };
