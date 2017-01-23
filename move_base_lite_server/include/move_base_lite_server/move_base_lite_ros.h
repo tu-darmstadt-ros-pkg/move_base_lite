@@ -38,26 +38,61 @@
 #include <actionlib/server/simple_action_server.h>
 #include <move_base_msgs/MoveBaseAction.h>
 
+#include <hector_move_base_msgs/MoveBaseAction.h>
+
+#include <nav_msgs/OccupancyGrid.h>
+
 namespace move_base_lite{
 
   typedef actionlib::SimpleActionServer<move_base_msgs::MoveBaseAction> MoveBaseActionServer;
 
 class MoveBaseLiteRos
 {
+
+  enum{
+    ACTION_ACTIVE,
+    GOAL_ACTIVE,
+    IDLE
+  };
+
 public:
   MoveBaseLiteRos(ros::NodeHandle& nh_, ros::NodeHandle& pnh_);
 
 protected:
+  bool getPose(geometry_msgs::PoseStamped& pose_out);
   void simpleGoalCallback(const geometry_msgs::PointStampedConstPtr goal);
 
+  void asGoalCB();
+  void asCancelCB();
+
+  void simple_goalCB(const geometry_msgs::PoseStampedConstPtr &simpleGoal);
+  //void cmd_velCB(const ros::MessageEvent<geometry_msgs::Twist> &event);
+  void controllerResultCB(const hector_move_base_msgs::MoveBaseActionResultConstPtr &result);
+
+  void mapCallback(const nav_msgs::OccupancyGrid& msg);
+
+
   ros::Subscriber simple_goal_sub_;
+  ros::Subscriber map_sub_;
 
   ros::Publisher path_pub_;
+
+  ros::Publisher drivepath_pub_;
+  ros::Subscriber controller_result_sub_;
+
 
   boost::shared_ptr<MoveBaseActionServer> as_;
 
   boost::shared_ptr<tf::TransformListener> tfl_;
   boost::shared_ptr<grid_map_planner::GridMapPlanner> grid_map_planner_;
+
+  boost::shared_ptr <actionlib::SimpleActionServer<hector_move_base_msgs::MoveBaseAction> > action_server_;
+
+
+  geometry_msgs::PoseStamped pose_source_;
+
+  std::string p_source_frame_name_;
+  std::string p_target_frame_name_;
 };
 
 }
