@@ -37,8 +37,8 @@ namespace move_base_lite{
 
 MoveBaseLiteRos::MoveBaseLiteRos(ros::NodeHandle& nh_, ros::NodeHandle& pnh_)
 {
-  p_source_frame_name_ = "world";
-  p_target_frame_name_ = "base_link";
+  p_source_frame_name_ = "base_link";
+  p_target_frame_name_ = "world";
 
   pose_source_.header.frame_id = p_source_frame_name_;
   pose_source_.pose.orientation.w = 1.0;
@@ -50,13 +50,13 @@ MoveBaseLiteRos::MoveBaseLiteRos(ros::NodeHandle& nh_, ros::NodeHandle& pnh_)
 
 
 
-  //map_sub_ = nh_.subscribe("/dynamic_map", 1, &MoveBaseLiteRos::mapCallback, this);
+  map_sub_ = nh_.subscribe("/dynamic_map", 1, &MoveBaseLiteRos::mapCallback, this);
 
 
 
   ros::NodeHandle controller_nh("/controller");
   drivepath_pub_ = controller_nh.advertise<hector_move_base_msgs::MoveBaseActionPath>("path", 0 );
-  controller_result_sub_ = controller_nh.subscribe<hector_move_base_msgs::MoveBaseActionResult>("result", 1, boost::bind(&MoveBaseLiteRos::controllerResultCB, this, _1));
+  //controller_result_sub_ = controller_nh.subscribe<hector_move_base_msgs::MoveBaseActionResult>("result", 1, boost::bind(&MoveBaseLiteRos::controllerResultCB, this, _1));
 
   simple_goal_sub_ = pnh_.subscribe<geometry_msgs::PoseStamped>("simple_goal", 1, boost::bind(&MoveBaseLiteRos::simple_goalCB, this, _1));
   //simple_goal_sub_ = pnh_.subscribe<geometry_msgs::PoseStamped>("/goal", 1, boost::bind(&MoveBaseLiteRos::goalCB, this, _1));
@@ -67,53 +67,44 @@ MoveBaseLiteRos::MoveBaseLiteRos(ros::NodeHandle& nh_, ros::NodeHandle& pnh_)
   action_server_->registerPreemptCallback(boost::bind(&MoveBaseLiteRos::asCancelCB, this));
   action_server_->start();
 
+  follow_path_client_.reset(new actionlib::SimpleActionClient<move_base_lite_msgs::FollowPathAction>("/controller/follow_path"));
+
 }
 
 
 
 void MoveBaseLiteRos::asGoalCB() {
-  ROS_INFO("[hector_move_base]: In ActionServer goal callback");
+  ROS_DEBUG("[move_base_lite] In ActionServer goal callback");
   const hector_move_base_msgs::MoveBaseGoalConstPtr goal = action_server_->acceptNewGoal();
-/*
-  clearGoal();
 
-  handlerActionGoal newGoal = handlerActionGoal();
-  newGoal.goal_id.id = goal_id_counter_++;
-  newGoal.goal_id.stamp = ros::Time::now();
-  newGoal.speed = goal->speed;
-  newGoal.reverse_allowed = goal->reverse_allowed;
-  if (goal->exploration == true) {
-      newGoal.do_exploration = true;
-  }
-  else {
-      newGoal.do_exploration = false;
-  }
-
-
-  //make sure goal could be transformed to costmap frame
-  if (goal->exploration == false) {
-    newGoal.target_pose = goalToGlobalFrame(goal->target_pose);
-    if (newGoal.target_pose.header.frame_id != costmap_->getGlobalFrameID()) {
-        ROS_ERROR("[hector_move_base]: tf transformation into global frame failed. goal will be canceled");
-        //new Goal has to be set in order to publish goal aborted result
-        pushCurrentGoal(newGoal);
-        abortedGoal();
-        return;
-    }
-  }
-  pushCurrentGoal(newGoal);
-  setNextState(planningState_);
-  return;
-  */
 }
 
 void MoveBaseLiteRos::asCancelCB() {
   if (action_server_->isActive()){
     action_server_->setPreempted();
+  }else{
+    ROS_WARN("[move_base_lite] Cancel request although server ist not active!");
   }
-  //ROS_INFO("[hector_move_base]: In ActionServer Preempt callback");
-  //abortedGoal();
-  //setNextState(idleState_);
+}
+
+void MoveBaseLiteRos::followPathDoneCb(const actionlib::SimpleClientGoalState& state,
+            const move_base_lite_msgs::FollowPathResultConstPtr& result)
+{
+  if (action_server_->isActive())
+  {
+    //if (state = actionlib::)
+    action_server_->setSucceeded();
+  }
+}
+
+void MoveBaseLiteRos::followPathActiveCb()
+{
+
+}
+
+void MoveBaseLiteRos::followPathFeedbackCb(const move_base_lite_msgs::FollowPathFeedbackConstPtr& feedback)
+{
+
 }
 
 void MoveBaseLiteRos::simple_goalCB(const geometry_msgs::PoseStampedConstPtr &simpleGoal)
@@ -125,21 +116,32 @@ void MoveBaseLiteRos::simple_goalCB(const geometry_msgs::PoseStampedConstPtr &si
   geometry_msgs::PoseStamped current_pose;
 
   if (!getPose (current_pose)){
-    ROS_ERROR("Could not retrieve robot pose in move_base_lite, aborting planning.");
+    ROS_ERROR("[move_base_lite] Could not retrieve robot pose, aborting planning.");
     return;
   }
 
-  std::vector<geometry_msgs::PoseStamped> plan;
+  //std::vector<geometry_msgs::PoseStamped> plan;
+  move_base_lite_msgs::FollowPathGoal goal;
 
-  if (!grid_map_planner_->makePlan(current_pose.pose, simpleGoal->pose, plan))
+  goal.target_path.header.frame_id = "world";
+
+  if (!grid_map_planner_->makePlan(current_pose.pose, simpleGoal->pose, goal.target_path.poses))
   {
-    ROS_ERROR("Planning to goal pose failed in move_base_lite, aborting planning.");
+    ROS_ERROR("[move_base_lite] Planning to goal pose failed, aborting planning.");
+    return;
   }
 
-  hector_move_base_msgs::MoveBaseActionPath path;
+
+  //goal.goal.target_path
+
+  follow_path_client_->sendGoal(goal,
+                                boost::bind(&MoveBaseLiteRos::followPathDoneCb, this, _1, _2),
+                                actionlib::SimpleActionClient<move_base_lite_msgs::FollowPathAction>::SimpleActiveCallback(),
+                                actionlib::SimpleActionClient<move_base_lite_msgs::FollowPathAction>::SimpleFeedbackCallback());
 
   //path.goal.target_path
 
+  /*
   static int goal_id = 0;
   ++goal_id;
 
@@ -155,17 +157,21 @@ void MoveBaseLiteRos::simple_goalCB(const geometry_msgs::PoseStampedConstPtr &si
   path.goal.target_path.poses = plan;
 
   drivepath_pub_.publish(path);
+  */
 }
 
-void MoveBaseLiteRos::mapCallback(const nav_msgs::OccupancyGrid& msg)
+void MoveBaseLiteRos::mapCallback(const nav_msgs::OccupancyGridConstPtr& msg)
 {
-  //grid_map::GridMapRosConverter::fromOccupancyGrid(msg, "occupancy", static_map_retrieved_);
+  ROS_DEBUG("[move_base_lite] Received map.");
+  latest_occ_grid_map_ = msg;
+  grid_map::GridMapRosConverter::fromOccupancyGrid(*msg, "occupancy", grid_map_planner_->getPlanningMap());
 
   //static_map_fused_ = static_map_retrieved_;
 
 
 }
 
+/*
 void MoveBaseLiteRos::controllerResultCB(const hector_move_base_msgs::MoveBaseActionResultConstPtr &result)
 {
   if (action_server_->isActive()){
@@ -176,32 +182,35 @@ void MoveBaseLiteRos::controllerResultCB(const hector_move_base_msgs::MoveBaseAc
       }
   }
 
+
   if (result->result.result != hector_move_base_msgs::MoveBaseResult::SUCCESS){
     ROS_INFO("Controller reports failure");
   }else{
     ROS_INFO("Controller reports success");
   }
 }
+*/
 
 bool MoveBaseLiteRos::getPose(geometry_msgs::PoseStamped& pose_out)
 {
 
-  pose_source_.header.frame_id = p_source_frame_name_;
-  pose_source_.pose.orientation.w = 1.0;
+  //pose_source_.header.frame_id = p_source_frame_name_;
+  //pose_source_.pose.orientation.w = 1.0;
   // Always get latest transform
   pose_source_.header.stamp = ros::Time(0);
 
   try {
-      tfl_->transformPose(p_target_frame_name_, pose_source_, pose_out);
-      return true;
-      //ROS_INFO(" source pose (%s): %f, %f, %f ---> target pose (%s): %f, %f, %f",
-      //         pose_source_.header.frame_id.c_str(), pose_source_.pose.position.x, pose_source_.pose.position.y, pose_source_.pose.position.z,
-      //         pose_out.header.frame_id.c_str(),pose_out.pose.position.x, pose_out.pose.position.y, pose_out.pose.position.z );
+    tfl_->transformPose(p_target_frame_name_, pose_source_, pose_out);
+    ROS_DEBUG("[move_base_lite] source pose (%s): %f, %f, %f ---> target pose (%s): %f, %f, %f",
+             pose_source_.header.frame_id.c_str(), pose_source_.pose.position.x, pose_source_.pose.position.y, pose_source_.pose.position.z,
+             pose_out.header.frame_id.c_str(),pose_out.pose.position.x, pose_out.pose.position.y, pose_out.pose.position.z );
+    return true;
+
       //pose_pub_.publish(pose_out);
   }
   catch (tf::TransformException ex){
-       ROS_WARN_THROTTLE(5.0, "tf lookup failed when trying to retrieve robot pose in move_base_lite:  %s. This message is throttled.",ex.what());
-       return false;
+    ROS_WARN_THROTTLE(5.0, "[move_base_lite] tf lookup failed when trying to retrieve robot pose in move_base_lite:  %s. This message is throttled.",ex.what());
+    return false;
   }
 }
 

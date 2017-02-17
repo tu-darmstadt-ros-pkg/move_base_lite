@@ -40,6 +40,10 @@
 
 #include <hector_move_base_msgs/MoveBaseAction.h>
 
+#include <move_base_lite_msgs/FollowPathAction.h>
+
+#include <actionlib/client/simple_action_client.h>
+
 #include <nav_msgs/OccupancyGrid.h>
 
 namespace move_base_lite{
@@ -65,11 +69,17 @@ protected:
   void asGoalCB();
   void asCancelCB();
 
+  void followPathDoneCb(const actionlib::SimpleClientGoalState& state,
+              const move_base_lite_msgs::FollowPathResultConstPtr& result);
+  void followPathActiveCb();
+  void followPathFeedbackCb(const move_base_lite_msgs::FollowPathFeedbackConstPtr& feedback);
+
+
   void simple_goalCB(const geometry_msgs::PoseStampedConstPtr &simpleGoal);
   //void cmd_velCB(const ros::MessageEvent<geometry_msgs::Twist> &event);
-  void controllerResultCB(const hector_move_base_msgs::MoveBaseActionResultConstPtr &result);
+  //void controllerResultCB(const hector_move_base_msgs::MoveBaseActionResultConstPtr &result);
 
-  void mapCallback(const nav_msgs::OccupancyGrid& msg);
+  void mapCallback(const nav_msgs::OccupancyGridConstPtr& msg);
 
 
   ros::Subscriber simple_goal_sub_;
@@ -88,8 +98,12 @@ protected:
 
   boost::shared_ptr <actionlib::SimpleActionServer<hector_move_base_msgs::MoveBaseAction> > action_server_;
 
+  boost::shared_ptr<actionlib::SimpleActionClient<move_base_lite_msgs::FollowPathAction> > follow_path_client_;
+
 
   geometry_msgs::PoseStamped pose_source_;
+
+  nav_msgs::OccupancyGridConstPtr latest_occ_grid_map_;
 
   std::string p_source_frame_name_;
   std::string p_target_frame_name_;

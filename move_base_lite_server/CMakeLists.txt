@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   tf
   hector_move_base_msgs
+  move_base_lite_msgs
 )
 
 
