@@ -11,6 +11,14 @@ find_package(catkin REQUIRED COMPONENTS
   nav_msgs
 )
 
+add_message_files(
+  DIRECTORY
+    msg
+  FILES
+    ErrorCodes.msg
+    FollowPathOptions.msg
+  )
+
 add_action_files(
   DIRECTORY
     action

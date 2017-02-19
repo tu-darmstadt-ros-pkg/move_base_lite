@@ -1,11 +1,10 @@
-nav_msgs/Path target_path
+geometry_msgs/PoseStamped target_pose
 
 FollowPathOptions follow_path_options
 
 ---
 
 ErrorCodes result
-
 
 ---
 
