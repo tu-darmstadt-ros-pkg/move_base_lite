@@ -224,7 +224,7 @@ void MoveBaseLiteRos::mapCallback(const nav_msgs::OccupancyGridConstPtr& msg)
 {
   ROS_DEBUG("[move_base_lite] Received map.");
   latest_occ_grid_map_ = msg;
-  grid_map::GridMapRosConverter::fromOccupancyGrid(*msg, "occupancy", grid_map_planner_->getPlanningMap());
+  grid_map::GridMapRosConverter::fromOccupancyGrid(*msg, std::string("occupancy"), grid_map_planner_->getPlanningMap());
 
   //static_map_fused_ = static_map_retrieved_;
 
