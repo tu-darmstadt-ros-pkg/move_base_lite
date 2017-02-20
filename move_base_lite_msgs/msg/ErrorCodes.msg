@@ -19,6 +19,10 @@ int32 PREEMPTED=-7
 # Stuck detection triggered
 int32 STUCK_DETECTED = -8
 
+# Tf failure
+int32 TF_LOOKUP_FAILURE = -9
+
+
 # planning & kinematics request errors
 int32 START_STATE_IN_COLLISION=-10
 int32 GOAL_IN_COLLISION=-12
