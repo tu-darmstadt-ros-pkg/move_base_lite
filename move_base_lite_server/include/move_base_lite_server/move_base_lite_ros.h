@@ -71,7 +71,7 @@ protected:
   void moveBaseCancelCB();
 
   void followPathDoneCb(const actionlib::SimpleClientGoalState& state,
-              const move_base_lite_msgs::FollowPathResultConstPtr& result);
+              const move_base_lite_msgs::FollowPathResultConstPtr& result_in);
   void followPathActiveCb();
   void followPathFeedbackCb(const move_base_lite_msgs::FollowPathFeedbackConstPtr& feedback);
 

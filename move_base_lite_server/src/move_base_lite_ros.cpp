@@ -90,21 +90,25 @@ void MoveBaseLiteRos::moveBaseGoalCB() {
 
 void MoveBaseLiteRos::moveBaseCancelCB() {
   if (move_base_action_server_->isActive()){
-    move_base_action_server_->setPreempted();
+    move_base_lite_msgs::MoveBaseResult result;
+    result.result.val = move_base_lite_msgs::ErrorCodes::PREEMPTED;
+    move_base_action_server_->setPreempted(result, "preempt from incoming message to server");
   }else{
     ROS_WARN("[move_base_lite] Cancel request although server ist not active!");
   }
 }
 
 void MoveBaseLiteRos::followPathDoneCb(const actionlib::SimpleClientGoalState& state,
-            const move_base_lite_msgs::FollowPathResultConstPtr& result)
+            const move_base_lite_msgs::FollowPathResultConstPtr& result_in)
 {
- if (result->result.val == move_base_lite_msgs::ErrorCodes::SUCCESS){
+ if (result_in->result.val == move_base_lite_msgs::ErrorCodes::SUCCESS){
     if (move_base_action_server_->isActive()){
-      move_base_action_server_->setSucceeded();
+      move_base_lite_msgs::MoveBaseResult result;
+      result.result.val = move_base_lite_msgs::ErrorCodes::SUCCESS;
+      move_base_action_server_->setSucceeded(result, "reached goal");
     }
 
-  }else if (result->result.val == move_base_lite_msgs::ErrorCodes::CONTROL_FAILED){
+  }else if (result_in->result.val == move_base_lite_msgs::ErrorCodes::CONTROL_FAILED){
     // If control fails (meaning carrot is more than threshold away from robot), we try replanning
     move_base_lite_msgs::FollowPathGoal follow_path_goal;
 
@@ -116,8 +120,16 @@ void MoveBaseLiteRos::followPathDoneCb(const actionlib::SimpleClientGoalState& s
       sendActionToController(follow_path_goal);
     }else{
       if (move_base_action_server_->isActive()){
-        move_base_action_server_->setAborted();
+        move_base_lite_msgs::MoveBaseResult result;
+        result.result.val = move_base_lite_msgs::ErrorCodes::PLANNING_FAILED;
+        move_base_action_server_->setAborted(result, "Planning failed when trying to replan after control failure.");
       }
+    }
+  }else{
+    if (move_base_action_server_->isActive()){
+      move_base_lite_msgs::MoveBaseResult result;
+      result.result.val = result_in->result.val;
+      move_base_action_server_->setAborted(result, "Controller failed with message: " + state.getText());
     }
   }
 
@@ -138,7 +150,9 @@ void MoveBaseLiteRos::simple_goalCB(const geometry_msgs::PoseStampedConstPtr &si
   current_goal_ = *simpleGoal;
 
   if (move_base_action_server_->isActive()){
-    move_base_action_server_->setPreempted();
+    move_base_lite_msgs::MoveBaseResult result;
+    result.result.val = move_base_lite_msgs::ErrorCodes::PREEMPTED;
+    move_base_action_server_->setPreempted(result, "preempt via simple goal callback");
   }
 
   move_base_lite_msgs::FollowPathGoal follow_path_goal;
