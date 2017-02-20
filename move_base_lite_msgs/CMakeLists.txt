@@ -24,6 +24,7 @@ add_action_files(
     action
   FILES
     FollowPath.action
+    MoveBase.action
 )
 
 generate_messages(

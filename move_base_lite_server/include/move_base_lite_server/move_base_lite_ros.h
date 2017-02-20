@@ -41,6 +41,7 @@
 #include <hector_move_base_msgs/MoveBaseAction.h>
 
 #include <move_base_lite_msgs/FollowPathAction.h>
+#include <move_base_lite_msgs/MoveBaseAction.h>
 
 #include <actionlib/client/simple_action_client.h>
 
@@ -66,8 +67,8 @@ protected:
   bool getPose(geometry_msgs::PoseStamped& pose_out);
   void simpleGoalCallback(const geometry_msgs::PointStampedConstPtr goal);
 
-  void asGoalCB();
-  void asCancelCB();
+  void moveBaseGoalCB();
+  void moveBaseCancelCB();
 
   void followPathDoneCb(const actionlib::SimpleClientGoalState& state,
               const move_base_lite_msgs::FollowPathResultConstPtr& result);
@@ -78,6 +79,9 @@ protected:
   void simple_goalCB(const geometry_msgs::PoseStampedConstPtr &simpleGoal);
   //void cmd_velCB(const ros::MessageEvent<geometry_msgs::Twist> &event);
   //void controllerResultCB(const hector_move_base_msgs::MoveBaseActionResultConstPtr &result);
+
+  bool generatePlanToGoal(geometry_msgs::PoseStamped& goal_pose, move_base_lite_msgs::FollowPathGoal& goal);
+  void sendActionToController(const move_base_lite_msgs::FollowPathGoal& goal);
 
   void mapCallback(const nav_msgs::OccupancyGridConstPtr& msg);
 
@@ -96,9 +100,13 @@ protected:
   boost::shared_ptr<tf::TransformListener> tfl_;
   boost::shared_ptr<grid_map_planner::GridMapPlanner> grid_map_planner_;
 
-  boost::shared_ptr <actionlib::SimpleActionServer<hector_move_base_msgs::MoveBaseAction> > action_server_;
+  boost::shared_ptr<actionlib::SimpleActionServer<move_base_lite_msgs::MoveBaseAction> > move_base_action_server_;
+  actionlib::SimpleActionServer<move_base_lite_msgs::MoveBaseAction>::GoalConstPtr move_base_action_goal_;
 
   boost::shared_ptr<actionlib::SimpleActionClient<move_base_lite_msgs::FollowPathAction> > follow_path_client_;
+
+  // Always set this on receiving  plan
+  geometry_msgs::PoseStamped current_goal_;
 
 
   geometry_msgs::PoseStamped pose_source_;
