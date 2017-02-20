@@ -43,7 +43,7 @@ MoveBaseLiteRos::MoveBaseLiteRos(ros::NodeHandle& nh_, ros::NodeHandle& pnh_)
   pose_source_.header.frame_id = p_source_frame_name_;
   pose_source_.pose.orientation.w = 1.0;
 
-  move_base_action_server_.reset(new actionlib::SimpleActionServer<move_base_lite_msgs::MoveBaseAction>(nh_, "move_base", false));
+  move_base_action_server_.reset(new actionlib::SimpleActionServer<move_base_lite_msgs::MoveBaseAction>(nh_, "/move_base", false));
 
   tfl_ = boost::make_shared<tf::TransformListener>();
   grid_map_planner_ = boost::make_shared<grid_map_planner::GridMapPlanner>();
