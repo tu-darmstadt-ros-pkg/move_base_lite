@@ -50,7 +50,7 @@ MoveBaseLiteRos::MoveBaseLiteRos(ros::NodeHandle& nh_, ros::NodeHandle& pnh_)
 
 
 
-  map_sub_ = nh_.subscribe("/dynamic_map", 1, &MoveBaseLiteRos::mapCallback, this);
+  map_sub_ = nh_.subscribe("/map", 1, &MoveBaseLiteRos::mapCallback, this);
 
 
 
@@ -58,7 +58,7 @@ MoveBaseLiteRos::MoveBaseLiteRos(ros::NodeHandle& nh_, ros::NodeHandle& pnh_)
   drivepath_pub_ = controller_nh.advertise<hector_move_base_msgs::MoveBaseActionPath>("path", 0 );
   //controller_result_sub_ = controller_nh.subscribe<hector_move_base_msgs::MoveBaseActionResult>("result", 1, boost::bind(&MoveBaseLiteRos::controllerResultCB, this, _1));
 
-  simple_goal_sub_ = pnh_.subscribe<geometry_msgs::PoseStamped>("simple_goal", 1, boost::bind(&MoveBaseLiteRos::simple_goalCB, this, _1));
+  simple_goal_sub_ = pnh_.subscribe<geometry_msgs::PoseStamped>("/move_base/simple_goal", 1, boost::bind(&MoveBaseLiteRos::simple_goalCB, this, _1));
   //simple_goal_sub_ = pnh_.subscribe<geometry_msgs::PoseStamped>("/goal", 1, boost::bind(&MoveBaseLiteRos::goalCB, this, _1));
 
 
