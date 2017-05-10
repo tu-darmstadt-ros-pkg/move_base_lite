@@ -1,5 +1,5 @@
 //=================================================================================================
-// Copyright (c) 2017, Stefan Kohlbrecher, TU Darmstadt
+// Copyright (c) 2017, Gabriel Hüttenberger, TU Darmstadt
 // All rights reserved.
 
 // Redistribution and use in source and binary forms, with or without
@@ -95,13 +95,13 @@ protected:
   ros::Subscriber controller_result_sub_;
 
 
-  boost::shared_ptr<MoveBaseActionServer> as_;
+  boost::shared_ptr<MoveBaseExplorationActionServer> as_;
 
   boost::shared_ptr<tf::TransformListener> tfl_;
   boost::shared_ptr<grid_map_planner::GridMapPlanner> grid_map_planner_;
 
-  boost::shared_ptr<actionlib::SimpleActionServer<move_base_lite_msgs::MoveBaseAction> > move_base_action_server_;
-  actionlib::SimpleActionServer<move_base_lite_msgs::MoveBaseAction>::GoalConstPtr move_base_action_goal_;
+  boost::shared_ptr<actionlib::SimpleActionServer<move_base_lite_msgs::ExploreAction> > move_base_exploration_server_;
+  actionlib::SimpleActionServer<move_base_lite_msgs::ExploreAction>::GoalConstPtr move_base_exploration_goal_;
 
   boost::shared_ptr<actionlib::SimpleActionClient<move_base_lite_msgs::FollowPathAction> > follow_path_client_;
 
