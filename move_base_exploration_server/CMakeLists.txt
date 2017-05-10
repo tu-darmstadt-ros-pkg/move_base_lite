@@ -1,0 +1,52 @@
+cmake_minimum_required(VERSION 2.8.3)
+project(move_base_exploration_server)
+
+set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
+
+## Find catkin macros and libraries
+## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
+## is used, also find other catkin packages
+find_package(catkin REQUIRED COMPONENTS
+  dynamic_reconfigure
+  geometry_msgs
+  grid_map_planner_lib
+  move_base_msgs
+  nav_msgs
+  roscpp
+  std_msgs
+  tf
+  hector_move_base_msgs
+  move_base_lite_msgs
+)
+
+
+catkin_package(
+#  INCLUDE_DIRS include
+#  LIBRARIES move_base_lite_server
+#  CATKIN_DEPENDS dynamic_reconfigure geometry_msgs grid_map_planner_lib move_base_msgs nav_msgs roscpp std_msgs tf
+#  DEPENDS system_lib
+)
+
+include_directories(
+  include
+  ${catkin_INCLUDE_DIRS}
+)
+
+## Declare a C++ library
+add_library(move_base_lite_ros
+  src/move_base_exploration_ros.cpp
+)
+
+target_link_libraries(move_base_exploration_ros
+  ${catkin_LIBRARIES}
+)
+
+#add_dependencies(move_base_lite_ros ${${PROJECT_NAME}_EXPORTED_TARGETS})
+
+
+add_executable(move_base_exploration_node src/move_base_exploration_node.cpp)
+
+target_link_libraries(move_base_exploration_node
+  #${catkin_LIBRARIES}
+  move_base_exploration_ros
+)
