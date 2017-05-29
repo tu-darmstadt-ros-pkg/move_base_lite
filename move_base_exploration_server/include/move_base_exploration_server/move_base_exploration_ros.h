@@ -26,8 +26,8 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //=================================================================================================
 
-#ifndef MOVE_BASE_LITE_ROS__H_
-#define MOVE_BASE_LITE_ROS__H_
+#ifndef MOVE_BASE_EXPLORATION_ROS__H_
+#define MOVE_BASE_EXPLORATION_ROS__H_
 
 #include <ros/ros.h>
 
@@ -49,9 +49,9 @@
 
 namespace move_base_exploration{
 
-  typedef actionlib::SimpleActionServer<move_base_msgs::ExploreAction> MoveBaseExplorationActionServer;
+  typedef actionlib::SimpleActionServer<move_base_lite_msgs::ExploreAction> MoveBaseExplorationActionServer;
 
-class MoveBaseLiteRos
+class MoveBaseExplorationRos
 {
 
   enum{

@@ -32,10 +32,14 @@
 
 #include <grid_map_ros/GridMapRosConverter.hpp>
 
+#include <pluginlib/class_loader.h>
+
+#include <hector_exploration_planner/hector_exploration_planner.h>
+
 namespace move_base_exploration{
 
 
-MoveBaseLiteRos::MoveBaseExplorationRos(ros::NodeHandle& nh_, ros::NodeHandle& pnh_)
+MoveBaseExplorationRos::MoveBaseExplorationRos(ros::NodeHandle& nh_, ros::NodeHandle& pnh_)
 {
   p_source_frame_name_ = "base_link";
   p_target_frame_name_ = "world";
@@ -48,7 +52,13 @@ MoveBaseLiteRos::MoveBaseExplorationRos(ros::NodeHandle& nh_, ros::NodeHandle& p
   tfl_ = boost::make_shared<tf::TransformListener>();
   grid_map_planner_ = boost::make_shared<grid_map_planner::GridMapPlanner>();
 
+  pluginlib::ClassLoader<hector_exploration_planner::HectorExplorationPlanner> expl_loader_;
+  boost::shared_ptr<hector_exploration_planner::HectorExplorationPlanner> exploration_planner_;
 
+  std::string exploration_planner_name = "hector_exploration_base_global_planner_plugin/HectorExplorationBaseGlobalPlannerPlugin";
+
+  exploration_planner_ = expl_loader_.createInstance(exploration_planner_name);
+  exploration_planner_->initialize(expl_loader_.getName(exploration_planner_name), costmap_);
 
   map_sub_ = nh_.subscribe("/map", 1, &MoveBaseLiteRos::mapCallback, this);
 
@@ -75,16 +85,19 @@ MoveBaseLiteRos::MoveBaseExplorationRos(ros::NodeHandle& nh_, ros::NodeHandle& p
 
 void MoveBaseLiteRos::moveExplorationGoalCB() {
   ROS_DEBUG("[move_base_exploration] In ActionServer goal callback");
-//  move_base_action_goal_ = move_base_action_server_->acceptNewGoal();
 
-//  current_goal_ = move_base_action_goal_->target_pose;
+  std::vector<geometry_msgs::PoseStamped> plan;
+  geometry_msgs::PoseStamped& current_pose;
+  if (getPose(current_pose)){
+    exploration_planner_->doExploration(current_pose, plan);
+  }
 
-//  move_base_lite_msgs::FollowPathGoal follow_path_goal;
-//  follow_path_goal.follow_path_options = move_base_action_goal_->follow_path_options;
+  move_base_lite_msgs::FollowPathGoal follow_path_goal;
+  follow_path_goal.follow_path_options.rotate_front_to_goal_pose_orientation = false;
 
-//  if (generatePlanToGoal(current_goal_, follow_path_goal)){
-//    sendActionToController(follow_path_goal);
-//  }
+  follow_path_goal.target_path = plan;
+  sendActionToController(follow_path_goal);
+  
 
 }
 
@@ -100,143 +113,7 @@ void MoveBaseLiteRos::moveBaseCancelCB() {
   }
 }
 
-void MoveBaseLiteRos::followPathDoneCb(const actionlib::SimpleClientGoalState& state,
-            const move_base_lite_msgs::FollowPathResultConstPtr& result_in)
-{
- if (result_in->result.val == move_base_lite_msgs::ErrorCodes::SUCCESS){
-    if (move_base_action_server_->isActive()){
-      move_base_lite_msgs::MoveBaseResult result;
-      result.result.val = move_base_lite_msgs::ErrorCodes::SUCCESS;
-      move_base_action_server_->setSucceeded(result, "reached goal");
-    }
 
-  }else if (result_in->result.val == move_base_lite_msgs::ErrorCodes::CONTROL_FAILED){
-    // If control fails (meaning carrot is more than threshold away from robot), we try replanning
-    move_base_lite_msgs::FollowPathGoal follow_path_goal;
-
-    if (move_base_action_server_->isActive()){
-      follow_path_goal.follow_path_options = move_base_action_goal_->follow_path_options;
-    }
-
-    if (generatePlanToGoal(current_goal_, follow_path_goal)){
-      sendActionToController(follow_path_goal);
-    }else{
-      if (move_base_action_server_->isActive()){
-        move_base_lite_msgs::MoveBaseResult result;
-        result.result.val = move_base_lite_msgs::ErrorCodes::PLANNING_FAILED;
-        move_base_action_server_->setAborted(result, "Planning failed when trying to replan after control failure.");
-      }
-    }
-  }else{
-    if (move_base_action_server_->isActive()){
-      move_base_lite_msgs::MoveBaseResult result;
-      result.result.val = result_in->result.val;
-      move_base_action_server_->setAborted(result, "Controller failed with message: " + state.getText());
-    }
-  }
-
-}
-
-void MoveBaseLiteRos::followPathActiveCb()
-{
-
-}
-
-void MoveBaseLiteRos::followPathFeedbackCb(const move_base_lite_msgs::FollowPathFeedbackConstPtr& feedback)
-{
-
-}
-
-void MoveBaseLiteRos::simple_goalCB(const geometry_msgs::PoseStampedConstPtr &simpleGoal)
-{
-  current_goal_ = *simpleGoal;
-
-  if (move_base_action_server_->isActive()){
-    move_base_lite_msgs::MoveBaseResult result;
-    result.result.val = move_base_lite_msgs::ErrorCodes::PREEMPTED;
-    move_base_action_server_->setPreempted(result, "preempt via simple goal callback");
-  }
-
-  move_base_lite_msgs::FollowPathGoal follow_path_goal;
-
-  if (generatePlanToGoal(current_goal_, follow_path_goal)){
-    sendActionToController(follow_path_goal);
-  }
-
-  /*
-  geometry_msgs::PoseStamped current_pose;
-
-  if (!getPose (current_pose)){
-    ROS_ERROR("[move_base_lite] Could not retrieve robot pose, aborting planning.");
-    return;
-  }
-
-  goal.target_path.header.frame_id = "world";
-
-  if (!grid_map_planner_->makePlan(current_pose.pose, simpleGoal->pose, goal.target_path.poses))
-  {
-    ROS_ERROR("[move_base_lite] Planning to goal pose failed, aborting planning.");
-    return;
-  }
-
-
-  //goal.goal.target_path
-
-  follow_path_client_->sendGoal(goal,
-                                boost::bind(&MoveBaseLiteRos::followPathDoneCb, this, _1, _2),
-                                actionlib::SimpleActionClient<move_base_lite_msgs::FollowPathAction>::SimpleActiveCallback(),
-                                actionlib::SimpleActionClient<move_base_lite_msgs::FollowPathAction>::SimpleFeedbackCallback());
-*/
-  //path.goal.target_path
-
-  /*
-  static int goal_id = 0;
-  ++goal_id;
-
-  path.goal_id.stamp = current_pose.header.stamp;
-  path.goal_id.id = std::to_string(goal_id);
-  path.goal.speed = 0.2;//goal.speed;
-  path.goal.target_path.header.frame_id = current_pose.header.frame_id;
-  //path.reverse_allowed = goal.reverse_allowed;
-
-  //geometry_msgs::PoseStamped targetPose;
-  //targetPose.header = goal.target_pose.header;
-  //targetPose.pose = goal.target_pose.pose;
-  path.goal.target_path.poses = plan;
-
-  drivepath_pub_.publish(path);
-  */
-}
-
-void MoveBaseLiteRos::exploreCB(const geometry_msgs::PoseStampedConstPtr &exploreGoal) {
-  ROS_DEBUG("[move_base_lite] In ActionServer explore callback");
- 
-//  if (move_base_action_server_->isActive()){
-//    move_base_lite_msgs::MoveBaseResult result;
-//    result.result.val = move_base_lite_msgs::ErrorCodes::PREEMPTED;
-//    move_base_action_server_->setPreempted(result, "preempt via explore goal callback");
-//  }
-
-}
-
-bool MoveBaseLiteRos::generatePlanToGoal(geometry_msgs::PoseStamped& goal_pose, move_base_lite_msgs::FollowPathGoal& goal)
-{
-  geometry_msgs::PoseStamped current_pose;
-
-  if (!getPose (current_pose)){
-    ROS_ERROR("[move_base_lite] Could not retrieve robot pose, aborting planning.");
-    return false;
-  }
-
-  goal.target_path.header.frame_id = "world";
-
-  if (!grid_map_planner_->makePlan(current_pose.pose, goal_pose.pose, goal.target_path.poses))
-  {
-    ROS_ERROR("[move_base_lite] Planning to goal pose failed, aborting planning.");
-    return false;
-  }
-  return true;
-}
 
 void MoveBaseLiteRos::sendActionToController(const move_base_lite_msgs::FollowPathGoal& goal)
 {

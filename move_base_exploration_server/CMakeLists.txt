@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf
   hector_move_base_msgs
   move_base_lite_msgs
+  hector_exploration_planner
 )
 
 
@@ -33,7 +34,7 @@ include_directories(
 )
 
 ## Declare a C++ library
-add_library(move_base_lite_ros
+add_library(move_base_exploration_ros
   src/move_base_exploration_ros.cpp
 )
 
