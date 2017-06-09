@@ -32,6 +32,10 @@
 
 #include <grid_map_ros/GridMapRosConverter.hpp>
 
+#include <nav_msgs/Path.h>
+
+
+
 namespace move_base_lite{
 
 
@@ -45,8 +49,11 @@ MoveBaseLiteRos::MoveBaseLiteRos(ros::NodeHandle& nh_, ros::NodeHandle& pnh_)
 
   move_base_action_server_.reset(new actionlib::SimpleActionServer<move_base_lite_msgs::MoveBaseAction>(nh_, "/move_base", false));
 
+  explore_action_server_.reset(new actionlib::SimpleActionServer<move_base_lite_msgs::ExploreAction>(nh_, "/explore", false));
+
   tfl_ = boost::make_shared<tf::TransformListener>();
   grid_map_planner_ = boost::make_shared<grid_map_planner::GridMapPlanner>();
+
 
 
 
@@ -67,6 +74,10 @@ MoveBaseLiteRos::MoveBaseLiteRos(ros::NodeHandle& nh_, ros::NodeHandle& pnh_)
   move_base_action_server_->registerPreemptCallback(boost::bind(&MoveBaseLiteRos::moveBaseCancelCB, this));
   move_base_action_server_->start();
 
+  explore_action_server_->registerGoalCallback(boost::bind(&MoveBaseLiteRos::exploreGoalCB, this));
+  explore_action_server_->registerPreemptCallback(boost::bind(&MoveBaseLiteRos::exploreCancelCB, this));
+  explore_action_server_->start();
+
   follow_path_client_.reset(new actionlib::SimpleActionClient<move_base_lite_msgs::FollowPathAction>("/controller/follow_path"));
 
 }
@@ -75,6 +86,10 @@ MoveBaseLiteRos::MoveBaseLiteRos(ros::NodeHandle& nh_, ros::NodeHandle& pnh_)
 
 void MoveBaseLiteRos::moveBaseGoalCB() {
   ROS_DEBUG("[move_base_lite] In ActionServer goal callback");
+  if (explore_action_server_->isActive()){
+    exploreCancelCB();
+  }
+  
   move_base_action_goal_ = move_base_action_server_->acceptNewGoal();
 
   current_goal_ = move_base_action_goal_->target_pose;
@@ -208,14 +223,40 @@ void MoveBaseLiteRos::simple_goalCB(const geometry_msgs::PoseStampedConstPtr &si
   */
 }
 
-void MoveBaseLiteRos::exploreCB(const geometry_msgs::PoseStampedConstPtr &exploreGoal) {
+void MoveBaseLiteRos::exploreGoalCB() {
   ROS_DEBUG("[move_base_lite] In ActionServer explore callback");
- 
-//  if (move_base_action_server_->isActive()){
-//    move_base_lite_msgs::MoveBaseResult result;
-//    result.result.val = move_base_lite_msgs::ErrorCodes::PREEMPTED;
-//    move_base_action_server_->setPreempted(result, "preempt via explore goal callback");
-//  }
+  if (move_base_action_server_->isActive()){
+    moveBaseCancelCB();
+  }
+
+  explore_action_goal_ = explore_action_server_->acceptNewGoal();
+
+  std::vector<geometry_msgs::PoseStamped> plan;
+  nav_msgs::Path explorationPath;
+  geometry_msgs::PoseStamped current_pose;
+  if (getPose(current_pose)){
+    grid_map_planner_->makeExplorationPlan(current_pose.pose, plan);
+  }
+  move_base_lite_msgs::FollowPathGoal follow_path_goal;
+  std_msgs::Float64 exploration_speed;
+  explorationPath.poses = plan;
+  explorationPath.header.frame_id = "world";
+  follow_path_goal.target_path = explorationPath;
+
+  follow_path_goal.follow_path_options.desired_speed = explore_action_goal_->desired_speed;
+
+  sendActionToController(follow_path_goal);
+
+}
+
+void MoveBaseLiteRos::exploreCancelCB() {
+  if (explore_action_server_->isActive()){
+    move_base_lite_msgs::ExploreResult result;
+    result.result.val = move_base_lite_msgs::ErrorCodes::PREEMPTED;
+    explore_action_server_->setPreempted(result, "preempt from incoming message to server");
+  }else{
+    ROS_WARN("[move_base_explore] Cancel request although server ist not active!");
+  }
 
 }
 

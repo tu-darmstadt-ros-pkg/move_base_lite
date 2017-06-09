@@ -1,4 +1,7 @@
 
+# Desired speed for the robot while following the path
+# If left at 0.0, defaults of the controller are used.
+float64 desired_speed
 
 ---
 
@@ -6,4 +9,4 @@ ErrorCodes result
 
 ---
 
-float64 percent_complete
+

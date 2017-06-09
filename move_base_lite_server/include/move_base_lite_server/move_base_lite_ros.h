@@ -42,14 +42,20 @@
 
 #include <move_base_lite_msgs/FollowPathAction.h>
 #include <move_base_lite_msgs/MoveBaseAction.h>
+#include <move_base_lite_msgs/ExploreAction.h>
 
 #include <actionlib/client/simple_action_client.h>
 
 #include <nav_msgs/OccupancyGrid.h>
 
+#include <pluginlib/class_loader.h>
+
+#include <std_msgs/Float64.h>
+
 namespace move_base_lite{
 
   typedef actionlib::SimpleActionServer<move_base_msgs::MoveBaseAction> MoveBaseActionServer;
+  typedef actionlib::SimpleActionServer<move_base_lite_msgs::ExploreAction> ExploreActionServer;
 
 class MoveBaseLiteRos
 {
@@ -70,6 +76,9 @@ protected:
   void moveBaseGoalCB();
   void moveBaseCancelCB();
 
+  void exploreGoalCB();
+  void exploreCancelCB();
+
   void followPathDoneCb(const actionlib::SimpleClientGoalState& state,
               const move_base_lite_msgs::FollowPathResultConstPtr& result_in);
   void followPathActiveCb();
@@ -86,6 +95,7 @@ protected:
   void mapCallback(const nav_msgs::OccupancyGridConstPtr& msg);
 
 
+
   ros::Subscriber simple_goal_sub_;
   ros::Subscriber map_sub_;
 
@@ -96,6 +106,7 @@ protected:
 
 
   boost::shared_ptr<MoveBaseActionServer> as_;
+  boost::shared_ptr<ExploreActionServer> eas_;
 
   boost::shared_ptr<tf::TransformListener> tfl_;
   boost::shared_ptr<grid_map_planner::GridMapPlanner> grid_map_planner_;
@@ -103,7 +114,11 @@ protected:
   boost::shared_ptr<actionlib::SimpleActionServer<move_base_lite_msgs::MoveBaseAction> > move_base_action_server_;
   actionlib::SimpleActionServer<move_base_lite_msgs::MoveBaseAction>::GoalConstPtr move_base_action_goal_;
 
+  boost::shared_ptr<actionlib::SimpleActionServer<move_base_lite_msgs::ExploreAction> > explore_action_server_;
+  actionlib::SimpleActionServer<move_base_lite_msgs::ExploreAction>::GoalConstPtr explore_action_goal_;
+
   boost::shared_ptr<actionlib::SimpleActionClient<move_base_lite_msgs::FollowPathAction> > follow_path_client_;
+
 
   // Always set this on receiving  plan
   geometry_msgs::PoseStamped current_goal_;
@@ -115,6 +130,7 @@ protected:
 
   std::string p_source_frame_name_;
   std::string p_target_frame_name_;
+
 };
 
 }
