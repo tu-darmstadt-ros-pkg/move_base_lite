@@ -123,8 +123,9 @@ void MoveBaseLiteRos::followPathDoneCb(const actionlib::SimpleClientGoalState& s
       move_base_lite_msgs::MoveBaseResult result;
       result.result.val = move_base_lite_msgs::ErrorCodes::SUCCESS;
       move_base_action_server_->setSucceeded(result, "reached goal");
-    } else if (explore_action_server_->isActive()){
-      move_base_lite_msgs::MoveBaseResult result;
+     }
+ else if (explore_action_server_->isActive()){
+      move_base_lite_msgs::ExploreResult result;
       result.result.val = move_base_lite_msgs::ErrorCodes::SUCCESS;
       explore_action_server_->setSucceeded(result, "reached goal");
     }
@@ -152,9 +153,10 @@ void MoveBaseLiteRos::followPathDoneCb(const actionlib::SimpleClientGoalState& s
       result.result.val = result_in->result.val;
       move_base_action_server_->setAborted(result, "Controller failed with message: " + state.getText());
     } else if (explore_action_server_->isActive()){
-      move_base_lite_msgs::MoveBaseResult result;
+      move_base_lite_msgs::ExploreResult result;
       result.result.val = result_in->result.val;
       explore_action_server_->setAborted(result, "Controller failed with message: " + state.getText());
+    }
   }
 
 }
