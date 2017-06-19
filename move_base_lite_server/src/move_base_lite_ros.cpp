@@ -145,7 +145,11 @@ void MoveBaseLiteRos::followPathDoneCb(const actionlib::SimpleClientGoalState& s
         move_base_lite_msgs::MoveBaseResult result;
         result.result.val = move_base_lite_msgs::ErrorCodes::PLANNING_FAILED;
         move_base_action_server_->setAborted(result, "Planning failed when trying to replan after control failure.");
-      }
+      } else if (explore_action_server_->isActive()){
+	  move_base_lite_msgs::ExploreResult result;
+          result.result.val = move_base_lite_msgs::ErrorCodes::PLANNING_FAILED;
+          explore_action_server_->setAborted(result, "Planning failed when trying to replan after control failure.");
+	}
     }
   }else{
     if (move_base_action_server_->isActive()){
