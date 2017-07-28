@@ -123,8 +123,7 @@ void MoveBaseLiteRos::followPathDoneCb(const actionlib::SimpleClientGoalState& s
       move_base_lite_msgs::MoveBaseResult result;
       result.result.val = move_base_lite_msgs::ErrorCodes::SUCCESS;
       move_base_action_server_->setSucceeded(result, "reached goal");
-     }
- else if (explore_action_server_->isActive()){
+     }else if (explore_action_server_->isActive()){
       move_base_lite_msgs::ExploreResult result;
       result.result.val = move_base_lite_msgs::ErrorCodes::SUCCESS;
       explore_action_server_->setSucceeded(result, "reached goal");
@@ -158,7 +157,7 @@ void MoveBaseLiteRos::followPathDoneCb(const actionlib::SimpleClientGoalState& s
       move_base_lite_msgs::MoveBaseResult result;
       result.result.val = result_in->result.val;
       move_base_action_server_->setAborted(result, "Controller failed with message: " + state.getText());
-    } else if (explore_action_server_->isActive()){
+    }else if (explore_action_server_->isActive()){
       move_base_lite_msgs::ExploreResult result;
       result.result.val = result_in->result.val;
       explore_action_server_->setAborted(result, "Controller failed with message: " + state.getText());
@@ -261,6 +260,7 @@ void MoveBaseLiteRos::exploreGoalCB() {
     move_base_lite_msgs::ExploreResult result;
     result.result.val = move_base_lite_msgs::ErrorCodes::PLANNING_FAILED;
     explore_action_server_->setAborted(result, error_desc);
+    return;
   }
 
   nav_msgs::Path explorationPath;
@@ -272,6 +272,7 @@ void MoveBaseLiteRos::exploreGoalCB() {
     move_base_lite_msgs::ExploreResult result;
     result.result.val = move_base_lite_msgs::ErrorCodes::PLANNING_FAILED;
     explore_action_server_->setAborted(result, error_desc);
+    return;
   }
 
   move_base_lite_msgs::FollowPathGoal follow_path_goal;
