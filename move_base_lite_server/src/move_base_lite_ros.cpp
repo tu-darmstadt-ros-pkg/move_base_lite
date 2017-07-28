@@ -136,21 +136,23 @@ void MoveBaseLiteRos::followPathDoneCb(const actionlib::SimpleClientGoalState& s
 
     if (move_base_action_server_->isActive()){
       follow_path_goal.follow_path_options = move_base_action_goal_->follow_path_options;
-    }
 
-    if (generatePlanToGoal(current_goal_, follow_path_goal)){
-      sendActionToController(follow_path_goal);
-    }else{
-      if (move_base_action_server_->isActive()){
+      if (generatePlanToGoal(current_goal_, follow_path_goal)){
+        sendActionToController(follow_path_goal);
+      }else{
         move_base_lite_msgs::MoveBaseResult result;
         result.result.val = move_base_lite_msgs::ErrorCodes::PLANNING_FAILED;
         move_base_action_server_->setAborted(result, "Planning failed when trying to replan after control failure.");
-      } else if (explore_action_server_->isActive()){
-	  move_base_lite_msgs::ExploreResult result;
-          result.result.val = move_base_lite_msgs::ErrorCodes::PLANNING_FAILED;
-          explore_action_server_->setAborted(result, "Planning failed when trying to replan after control failure.");
-	}
+      }
     }
+
+    if (explore_action_server_->isActive()){
+
+          move_base_lite_msgs::ExploreResult result;
+          result.result.val = move_base_lite_msgs::ErrorCodes::PLANNING_FAILED;
+          explore_action_server_->setAborted(result, "Control failed while following exploration plan.");
+	}
+
   }else{
     if (move_base_action_server_->isActive()){
       move_base_lite_msgs::MoveBaseResult result;
@@ -182,13 +184,21 @@ void MoveBaseLiteRos::simple_goalCB(const geometry_msgs::PoseStampedConstPtr &si
   if (move_base_action_server_->isActive()){
     move_base_lite_msgs::MoveBaseResult result;
     result.result.val = move_base_lite_msgs::ErrorCodes::PREEMPTED;
-    move_base_action_server_->setPreempted(result, "preempt via simple goal callback");
+    move_base_action_server_->setPreempted(result, "move_base_lite goal action preempt via simple goal callback");
+  }
+
+  if (explore_action_server_->isActive()){
+    move_base_lite_msgs::ExploreResult result;
+    result.result.val = move_base_lite_msgs::ErrorCodes::PREEMPTED;
+    explore_action_server_->setAborted(result, "move_base_lite exploration action preempt via simple goal callback ");
   }
 
   move_base_lite_msgs::FollowPathGoal follow_path_goal;
 
   if (generatePlanToGoal(current_goal_, follow_path_goal)){
     sendActionToController(follow_path_goal);
+  }else{
+    ROS_WARN("Planning to simple goal pose failed!");
   }
 
   /*
@@ -244,15 +254,28 @@ void MoveBaseLiteRos::exploreGoalCB() {
 
   explore_action_goal_ = explore_action_server_->acceptNewGoal();
 
-  std::vector<geometry_msgs::PoseStamped> plan;
-  nav_msgs::Path explorationPath;
   geometry_msgs::PoseStamped current_pose;
-  if (getPose(current_pose)){
-    grid_map_planner_->makeExplorationPlan(current_pose.pose, plan);
+  if (!getPose(current_pose)){
+    std::string error_desc = "Unable to retrieve robot pose in move_base_lite, aborting!";
+    ROS_ERROR_STREAM(error_desc);
+    move_base_lite_msgs::ExploreResult result;
+    result.result.val = move_base_lite_msgs::ErrorCodes::PLANNING_FAILED;
+    explore_action_server_->setAborted(result, error_desc);
   }
+
+  nav_msgs::Path explorationPath;
+
+  if (!grid_map_planner_->makeExplorationPlan(current_pose.pose, explorationPath.poses)){
+    //ROS_ERROR("Failed to generate exploration plan, aborting!");
+    std::string error_desc = "Failed to generate exploration plan, aborting!";
+    ROS_WARN_STREAM(error_desc);
+    move_base_lite_msgs::ExploreResult result;
+    result.result.val = move_base_lite_msgs::ErrorCodes::PLANNING_FAILED;
+    explore_action_server_->setAborted(result, error_desc);
+  }
+
   move_base_lite_msgs::FollowPathGoal follow_path_goal;
-  std_msgs::Float64 exploration_speed;
-  explorationPath.poses = plan;
+
   explorationPath.header.frame_id = "world";
   follow_path_goal.target_path = explorationPath;
 
@@ -268,7 +291,7 @@ void MoveBaseLiteRos::exploreCancelCB() {
     result.result.val = move_base_lite_msgs::ErrorCodes::PREEMPTED;
     explore_action_server_->setPreempted(result, "preempt from incoming message to server");
   }else{
-    ROS_WARN("[move_base_explore] Cancel request although server ist not active!");
+    ROS_WARN("[move_base_lite] Cancel request although exploration server ist not active!");
   }
 
 }
@@ -306,10 +329,6 @@ void MoveBaseLiteRos::mapCallback(const nav_msgs::OccupancyGridConstPtr& msg)
   ROS_DEBUG("[move_base_lite] Received map.");
   latest_occ_grid_map_ = msg;
   grid_map::GridMapRosConverter::fromOccupancyGrid(*msg, std::string("occupancy"), grid_map_planner_->getPlanningMap());
-
-  //static_map_fused_ = static_map_retrieved_;
-
-
 }
 
 bool MoveBaseLiteRos::getPose(geometry_msgs::PoseStamped& pose_out)
