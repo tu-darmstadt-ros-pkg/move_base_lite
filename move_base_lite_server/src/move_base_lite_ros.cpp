@@ -291,6 +291,8 @@ void MoveBaseLiteRos::exploreCancelCB() {
     move_base_lite_msgs::ExploreResult result;
     result.result.val = move_base_lite_msgs::ErrorCodes::PREEMPTED;
     explore_action_server_->setPreempted(result, "preempt from incoming message to server");
+    follow_path_client_->cancelGoal();
+    ROS_INFO("Exploration goal cancelled!");
   }else{
     ROS_WARN("[move_base_lite] Cancel request although exploration server ist not active!");
   }
