@@ -78,7 +78,7 @@ MoveBaseLiteRos::MoveBaseLiteRos(ros::NodeHandle& nh_, ros::NodeHandle& pnh_)
   explore_action_server_->registerPreemptCallback(boost::bind(&MoveBaseLiteRos::exploreCancelCB, this));
   explore_action_server_->start();
 
-  follow_path_client_.reset(new actionlib::SimpleActionClient<move_base_lite_msgs::FollowPathAction>("/controller/follow_path"));
+  follow_path_client_.reset(new actionlib::SimpleActionClient<move_base_lite_msgs::FollowPathAction>("/controller/follow_path", false));
 
 }
 
@@ -291,6 +291,7 @@ void MoveBaseLiteRos::exploreCancelCB() {
     move_base_lite_msgs::ExploreResult result;
     result.result.val = move_base_lite_msgs::ErrorCodes::PREEMPTED;
     explore_action_server_->setPreempted(result, "preempt from incoming message to server");
+
     follow_path_client_->cancelGoal();
     ROS_INFO("Exploration goal cancelled!");
   }else{
