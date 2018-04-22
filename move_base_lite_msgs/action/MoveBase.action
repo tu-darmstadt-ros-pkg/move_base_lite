@@ -1,5 +1,7 @@
 geometry_msgs/PoseStamped target_pose
 
+PlanPathOptions   plan_path_options
+
 FollowPathOptions follow_path_options
 
 ---

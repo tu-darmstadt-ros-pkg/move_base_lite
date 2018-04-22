@@ -17,6 +17,7 @@ add_message_files(
   FILES
     ErrorCodes.msg
     FollowPathOptions.msg
+    PlanPathOptions.msg
   )
 
 add_action_files(

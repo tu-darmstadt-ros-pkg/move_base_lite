@@ -97,7 +97,13 @@ void MoveBaseLiteRos::moveBaseGoalCB() {
   move_base_lite_msgs::FollowPathGoal follow_path_goal;
   follow_path_goal.follow_path_options = move_base_action_goal_->follow_path_options;
 
-  if (generatePlanToGoal(current_goal_, follow_path_goal)){
+  if (move_base_action_goal_->plan_path_options.planning_approach == move_base_lite_msgs::PlanPathOptions::DEFAULT_COLLISION_FREE){
+    if (generatePlanToGoal(current_goal_, follow_path_goal)){
+      sendActionToController(follow_path_goal);
+    }
+  }else if(move_base_action_goal_->plan_path_options.planning_approach == move_base_lite_msgs::PlanPathOptions::NO_PLANNNING_FORWARD_GOAL){
+    // Push original target pose into path to follow
+    follow_path_goal.target_path.poses.push_back(current_goal_);
     sendActionToController(follow_path_goal);
   }
 
