@@ -2,6 +2,9 @@
 # If left at 0.0, defaults of the controller are used.
 float64 desired_speed
 
+# If false, target path can be smoothed out
+bool is_fixed
+
 # Position tolerance for reaching the goal pose
 # If left at 0.0, defaults of the controller are used.
 float64 goal_pose_position_tolerance
@@ -14,3 +17,7 @@ float64 goal_pose_angle_tolerance
 # robot alignes either front or rear with the target pose,
 # depending on which direction is shorter
 bool rotate_front_to_goal_pose_orientation
+
+# If true, robot is allowed to follow path backwards
+# even if robot is not y-symmetric
+bool reverse_allowed

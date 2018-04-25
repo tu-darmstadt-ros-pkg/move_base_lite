@@ -9,4 +9,12 @@ ErrorCodes result
 
 ---
 
-float64 percent_complete
+uint32 current_waypoint
+float64 current_percent_complete
+float64 total_percent_complete
+
+# Duration since start_time of the current waypoint.
+# The duration matches the actual traversed path, e.g. if the robot is stuck, it won't increase
+duration actual_duration_since_start
+# Time difference between planned time and current time
+duration current_lagg
