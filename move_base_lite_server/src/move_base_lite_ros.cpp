@@ -116,6 +116,9 @@ void MoveBaseLiteRos::moveBaseCancelCB() {
     move_base_lite_msgs::MoveBaseResult result;
     result.result.val = move_base_lite_msgs::ErrorCodes::PREEMPTED;
     move_base_action_server_->setPreempted(result, "preempt from incoming message to server");
+    if (follow_path_client_->isServerConnected()){
+        follow_path_client_->cancelAllGoals();
+    }
   }else{
     ROS_WARN("[move_base_lite] Cancel request although server ist not active!");
   }
