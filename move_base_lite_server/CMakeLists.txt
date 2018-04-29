@@ -45,6 +45,8 @@ target_link_libraries(move_base_lite_ros
   ${catkin_LIBRARIES}
 )
 
+add_dependencies(move_base_lite_ros ${PROJECT_NAME}_gencfg)
+
 #add_dependencies(move_base_lite_ros ${${PROJECT_NAME}_EXPORTED_TARGETS})
 
 
