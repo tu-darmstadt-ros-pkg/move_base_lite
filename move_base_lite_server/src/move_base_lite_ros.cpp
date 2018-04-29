@@ -41,6 +41,9 @@ namespace move_base_lite{
 
 MoveBaseLiteRos::MoveBaseLiteRos(ros::NodeHandle& nh_, ros::NodeHandle& pnh_)
 {
+  dyn_rec_server_.reset(new ReconfigureServer(config_mutex_, pnh_));
+  dyn_rec_server_->setCallback(boost::bind(&MoveBaseLiteRos::reconfigureCallback, this, _1, _2));    
+    
   p_source_frame_name_ = "base_link";
   p_target_frame_name_ = "world";
 
@@ -82,6 +85,13 @@ MoveBaseLiteRos::MoveBaseLiteRos(ros::NodeHandle& nh_, ros::NodeHandle& pnh_)
 
 }
 
+void MoveBaseLiteRos::reconfigureCallback(move_base_lite_server::MoveBaseLiteConfig &config, uint32_t level) {
+
+    ROS_INFO("move_base_lite_server received dynamic reconfigure, lethal dist: %f, penalty dist: %f", config.lethal_dist, config.penalty_dist);
+    
+    grid_map_planner_->setDistanceThresholds(config.lethal_dist, config.penalty_dist);
+    
+}
 
 
 void MoveBaseLiteRos::moveBaseGoalCB() {

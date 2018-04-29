@@ -17,8 +17,12 @@ find_package(catkin REQUIRED COMPONENTS
   tf
   hector_move_base_msgs
   move_base_lite_msgs
+  dynamic_reconfigure
 )
 
+generate_dynamic_reconfigure_options(
+  cfg/MoveBaseLite.cfg
+)
 
 catkin_package(
 #  INCLUDE_DIRS include

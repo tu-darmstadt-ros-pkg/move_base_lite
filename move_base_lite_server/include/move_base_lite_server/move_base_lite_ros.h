@@ -52,6 +52,10 @@
 
 #include <std_msgs/Float64.h>
 
+
+#include <dynamic_reconfigure/server.h>
+#include <move_base_lite_server/MoveBaseLiteConfig.h>
+
 namespace move_base_lite{
 
   typedef actionlib::SimpleActionServer<move_base_msgs::MoveBaseAction> MoveBaseActionServer;
@@ -70,6 +74,9 @@ public:
   MoveBaseLiteRos(ros::NodeHandle& nh_, ros::NodeHandle& pnh_);
 
 protected:
+    
+  void reconfigureCallback(move_base_lite_server::MoveBaseLiteConfig &config, uint32_t level);  
+  
   bool getPose(geometry_msgs::PoseStamped& pose_out);
   void simpleGoalCallback(const geometry_msgs::PointStampedConstPtr goal);
 
@@ -130,6 +137,10 @@ protected:
 
   std::string p_source_frame_name_;
   std::string p_target_frame_name_;
+  
+  typedef dynamic_reconfigure::Server<move_base_lite_server::MoveBaseLiteConfig> ReconfigureServer;
+  boost::shared_ptr<ReconfigureServer> dyn_rec_server_;
+  boost::recursive_mutex config_mutex_;
 
 };
 
