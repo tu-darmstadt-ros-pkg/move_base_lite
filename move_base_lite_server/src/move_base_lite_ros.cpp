@@ -41,9 +41,6 @@ namespace move_base_lite{
 
 MoveBaseLiteRos::MoveBaseLiteRos(ros::NodeHandle& nh_, ros::NodeHandle& pnh_)
 {
-  dyn_rec_server_.reset(new ReconfigureServer(config_mutex_, pnh_));
-  dyn_rec_server_->setCallback(boost::bind(&MoveBaseLiteRos::reconfigureCallback, this, _1, _2));    
-    
   p_source_frame_name_ = "base_link";
   p_target_frame_name_ = "world";
 
@@ -83,6 +80,9 @@ MoveBaseLiteRos::MoveBaseLiteRos(ros::NodeHandle& nh_, ros::NodeHandle& pnh_)
 
   follow_path_client_.reset(new actionlib::SimpleActionClient<move_base_lite_msgs::FollowPathAction>("/controller/follow_path", false));
 
+  dyn_rec_server_.reset(new ReconfigureServer(config_mutex_, pnh_));
+  dyn_rec_server_->setCallback(boost::bind(&MoveBaseLiteRos::reconfigureCallback, this, _1, _2));    
+  
 }
 
 void MoveBaseLiteRos::reconfigureCallback(move_base_lite_server::MoveBaseLiteConfig &config, uint32_t level) {
