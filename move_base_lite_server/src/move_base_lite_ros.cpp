@@ -103,6 +103,7 @@ void MoveBaseLiteRos::moveBaseGoalCB() {
   move_base_action_goal_ = move_base_action_server_->acceptNewGoal();
 
   current_goal_ = move_base_action_goal_->target_pose;
+  current_planning_approach_ = move_base_action_goal_->plan_path_options.planning_approach;
 
   move_base_lite_msgs::FollowPathGoal follow_path_goal;
   follow_path_goal.follow_path_options = move_base_action_goal_->follow_path_options;
@@ -148,7 +149,7 @@ void MoveBaseLiteRos::followPathDoneCb(const actionlib::SimpleClientGoalState& s
       explore_action_server_->setSucceeded(result, "reached goal");
     }
 
-  }else if (result_in->result.val == move_base_lite_msgs::ErrorCodes::CONTROL_FAILED){
+  }else if (result_in->result.val == move_base_lite_msgs::ErrorCodes::CONTROL_FAILED && current_planning_approach_!= move_base_lite_msgs::PlanPathOptions::NO_PLANNNING_FORWARD_GOAL){
     // If control fails (meaning carrot is more than threshold away from robot), we try replanning
     move_base_lite_msgs::FollowPathGoal follow_path_goal;
 
