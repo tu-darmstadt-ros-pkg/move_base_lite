@@ -129,7 +129,6 @@ protected:
 
   // Always set this on receiving  plan
   geometry_msgs::PoseStamped current_goal_;
-  int current_planning_approach_;
 
   geometry_msgs::PoseStamped pose_source_;
 
