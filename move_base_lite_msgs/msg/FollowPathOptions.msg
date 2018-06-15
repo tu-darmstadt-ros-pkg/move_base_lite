@@ -21,3 +21,7 @@ bool rotate_front_to_goal_pose_orientation
 # If true, robot is allowed to follow path backwards
 # even if robot is not y-symmetric
 bool reverse_allowed
+
+# If true, robot is not allowed to drive forwards
+# Only works if reverse_allowed is true as well
+bool reverse_forced

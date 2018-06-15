@@ -305,6 +305,7 @@ void MoveBaseLiteRos::exploreGoalCB() {
   follow_path_goal.target_path = explorationPath;
 
   follow_path_goal.follow_path_options.desired_speed = explore_action_goal_->desired_speed;
+  follow_path_goal.follow_path_options.reverse_allowed = true;
 
   sendActionToController(follow_path_goal);
 
