@@ -40,7 +40,7 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES move_base_lite_msgs
-#  CATKIN_DEPENDS actionlib_msgs geometry_msgs
+  CATKIN_DEPENDS actionlib_msgs geometry_msgs nav_msgs
 #  DEPENDS system_lib
 )
 
@@ -54,5 +54,3 @@ catkin_package(
 include_directories(
   ${catkin_INCLUDE_DIRS}
 )
-
-
