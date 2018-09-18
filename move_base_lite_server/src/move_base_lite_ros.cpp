@@ -87,9 +87,13 @@ MoveBaseLiteRos::MoveBaseLiteRos(ros::NodeHandle& nh_, ros::NodeHandle& pnh_)
 
 void MoveBaseLiteRos::reconfigureCallback(move_base_lite_server::MoveBaseLiteConfig &config, uint32_t level) {
 
-    ROS_INFO("move_base_lite_server received dynamic reconfigure, lethal dist: %f, penalty dist: %f", config.lethal_dist, config.penalty_dist);
+    ROS_INFO("move_base_lite_server received dynamic reconfigure, lethal dist: %f, penalty dist: %f penalty_weight: %f",
+             config.lethal_dist,
+             config.penalty_dist,
+             config.penalty_weight
+            );
     
-    grid_map_planner_->setDistanceThresholds(config.lethal_dist, config.penalty_dist);
+    grid_map_planner_->setDistanceThresholds(config.lethal_dist, config.penalty_dist, config.penalty_weight);
     
 }
 
