@@ -96,6 +96,17 @@ protected:
   //void cmd_velCB(const ros::MessageEvent<geometry_msgs::Twist> &event);
   //void controllerResultCB(const hector_move_base_msgs::MoveBaseActionResultConstPtr &result);
 
+  /**
+   * @brief makePlan wraps grid_map_planner function, optionally publishing debug map
+   */
+  bool makePlan(const geometry_msgs::Pose &start,
+                const geometry_msgs::Pose &original_goal,
+                std::vector<geometry_msgs::PoseStamped> &plan);
+  /**
+   * @brief makeExplorationPlan wraps grid_map_planner function, optionally publishing debug map
+   */
+  bool makeExplorationPlan(const geometry_msgs::Pose &start,std::vector<geometry_msgs::PoseStamped> &plan);
+
   bool generatePlanToGoal(geometry_msgs::PoseStamped& goal_pose, move_base_lite_msgs::FollowPathGoal& goal);
   void sendActionToController(const move_base_lite_msgs::FollowPathGoal& goal);
 
@@ -107,6 +118,7 @@ protected:
   ros::Subscriber map_sub_;
 
   ros::Publisher path_pub_;
+  ros::Publisher debug_map_pub_;
 
   ros::Publisher drivepath_pub_;
   ros::Subscriber controller_result_sub_;

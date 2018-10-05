@@ -59,6 +59,7 @@ MoveBaseLiteRos::MoveBaseLiteRos(ros::NodeHandle& nh_, ros::NodeHandle& pnh_)
 
   map_sub_ = nh_.subscribe("/map", 1, &MoveBaseLiteRos::mapCallback, this);
 
+  debug_map_pub_ = pnh_.advertise<grid_map_msgs::GridMap>("debug_planning_map", 1 );
 
 
   ros::NodeHandle controller_nh("/controller");
@@ -293,7 +294,7 @@ void MoveBaseLiteRos::exploreGoalCB() {
 
   nav_msgs::Path explorationPath;
 
-  if (!grid_map_planner_->makeExplorationPlan(current_pose.pose, explorationPath.poses)){
+  if (!this->makeExplorationPlan(current_pose.pose, explorationPath.poses)){
     //ROS_ERROR("Failed to generate exploration plan, aborting!");
     std::string error_desc = "Failed to generate exploration plan, aborting!";
     ROS_WARN_STREAM(error_desc);
@@ -329,6 +330,36 @@ void MoveBaseLiteRos::exploreCancelCB() {
 
 }
 
+bool MoveBaseLiteRos::makePlan(const geometry_msgs::Pose &start,
+              const geometry_msgs::Pose &original_goal,
+              std::vector<geometry_msgs::PoseStamped> &plan)
+{
+  bool success = grid_map_planner_->makePlan(start, original_goal, plan);
+
+  if (debug_map_pub_.getNumSubscribers() > 0){
+    grid_map_msgs::GridMap grid_map_msg;
+    grid_map::GridMapRosConverter::toMessage(grid_map_planner_->getPlanningMap(), grid_map_msg);
+    debug_map_pub_.publish(grid_map_msg);
+  }
+
+
+  return success;
+}
+
+bool MoveBaseLiteRos::makeExplorationPlan(const geometry_msgs::Pose &start,std::vector<geometry_msgs::PoseStamped> &plan)
+{
+  bool success = grid_map_planner_->makeExplorationPlan(start, plan);
+
+  if (debug_map_pub_.getNumSubscribers() > 0){
+    grid_map_msgs::GridMap grid_map_msg;
+    grid_map::GridMapRosConverter::toMessage(grid_map_planner_->getPlanningMap(), grid_map_msg);
+    debug_map_pub_.publish(grid_map_msg);
+  }
+
+  return success;
+}
+
+
 bool MoveBaseLiteRos::generatePlanToGoal(geometry_msgs::PoseStamped& goal_pose, move_base_lite_msgs::FollowPathGoal& goal)
 {
   geometry_msgs::PoseStamped current_pose;
@@ -340,7 +371,7 @@ bool MoveBaseLiteRos::generatePlanToGoal(geometry_msgs::PoseStamped& goal_pose, 
 
   goal.target_path.header.frame_id = "world";
 
-  if (!grid_map_planner_->makePlan(current_pose.pose, goal_pose.pose, goal.target_path.poses))
+  if (!this->makePlan(current_pose.pose, goal_pose.pose, goal.target_path.poses))
   {
     ROS_ERROR("[move_base_lite] Planning to goal pose failed, aborting planning.");
     return false;
