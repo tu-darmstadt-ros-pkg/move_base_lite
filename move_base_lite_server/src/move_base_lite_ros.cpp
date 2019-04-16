@@ -223,6 +223,24 @@ void MoveBaseLiteRos::simple_goalCB(const geometry_msgs::PoseStampedConstPtr &si
 
   move_base_lite_msgs::FollowPathGoal follow_path_goal;
 
+  if (current_goal_.header.frame_id != p_target_frame_name_){
+    tf::StampedTransform transform;
+    try {
+      tfl_->waitForTransform(p_target_frame_name_, current_goal_.header.frame_id, ros::Time(0), ros::Duration(1.0));
+      tfl_->lookupTransform(p_target_frame_name_, current_goal_.header.frame_id, ros::Time(0), transform);
+    } catch (tf::TransformException& ex) {
+      ROS_ERROR("%s", ex.what());
+      return;
+    }
+
+    tf::Pose tfPose;
+    tf::poseMsgToTF(current_goal_.pose, tfPose);
+    tfPose = transform * tfPose;
+    tf::poseTFToMsg(tfPose, current_goal_.pose);
+
+    current_goal_.header.frame_id = p_target_frame_name_;
+  }
+
   if (generatePlanToGoal(current_goal_, follow_path_goal)){
     sendActionToController(follow_path_goal);
   }else{
