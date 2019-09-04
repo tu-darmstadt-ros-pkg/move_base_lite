@@ -3,6 +3,10 @@
 # If left at 0.0, defaults of the controller are used.
 float64 desired_speed
 
+# If true, resets the pose history used for stuck detection
+# to prevent getting stuck immediately
+bool reset_stuck_history
+
 ---
 
 ErrorCodes result

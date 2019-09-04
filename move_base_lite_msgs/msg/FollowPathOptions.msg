@@ -25,3 +25,7 @@ bool reverse_allowed
 # If true, robot is not allowed to drive forwards
 # Only works if reverse_allowed is true as well
 bool reverse_forced
+
+# If true, resets the pose history used for stuck detection
+# to prevent getting stuck immediately
+bool reset_stuck_history
