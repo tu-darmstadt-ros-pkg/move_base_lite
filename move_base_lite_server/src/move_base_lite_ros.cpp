@@ -394,6 +394,16 @@ void MoveBaseLiteRos::mapCallback(const nav_msgs::OccupancyGridConstPtr& msg)
   ROS_DEBUG("[move_base_lite] Received map.");
   latest_occ_grid_map_ = msg;
   grid_map::GridMapRosConverter::fromOccupancyGrid(*msg, std::string("occupancy"), grid_map_planner_->getPlanningMap());
+  if (move_base_action_server_->isActive()) {
+    move_base_lite_msgs::FollowPathGoal follow_path_goal;
+    follow_path_goal.follow_path_options = move_base_action_goal_->follow_path_options;
+    if (move_base_action_goal_->plan_path_options.planning_approach == move_base_lite_msgs::PlanPathOptions::DEFAULT_COLLISION_FREE){
+      if (generatePlanToGoal(current_goal_, follow_path_goal)){
+        sendActionToController(follow_path_goal);
+      }
+    }
+    follow_path_goal.follow_path_options = move_base_action_goal_->follow_path_options;
+  }
 }
 
 bool MoveBaseLiteRos::getPose(geometry_msgs::PoseStamped& pose_out)
