@@ -62,8 +62,7 @@ MoveBaseLiteRos::MoveBaseLiteRos(ros::NodeHandle& nh_, ros::NodeHandle& pnh_)
   debug_map_pub_ = pnh_.advertise<grid_map_msgs::GridMap>("debug_planning_map", 1 );
 
 
-  ros::NodeHandle controller_nh("/controller");
-  drivepath_pub_ = controller_nh.advertise<hector_move_base_msgs::MoveBaseActionPath>("path", 0 );
+  drivepath_pub_ = pnh_.advertise<nav_msgs::Path>("path", 1, true);
   //controller_result_sub_ = controller_nh.subscribe<hector_move_base_msgs::MoveBaseActionResult>("result", 1, boost::bind(&MoveBaseLiteRos::controllerResultCB, this, _1));
 
   simple_goal_sub_ = pnh_.subscribe<geometry_msgs::PoseStamped>("/move_base/simple_goal", 1, boost::bind(&MoveBaseLiteRos::simple_goalCB, this, _1));
@@ -382,6 +381,7 @@ bool MoveBaseLiteRos::generatePlanToGoal(geometry_msgs::PoseStamped& goal_pose, 
 
 void MoveBaseLiteRos::sendActionToController(const move_base_lite_msgs::FollowPathGoal& goal)
 {
+  drivepath_pub_.publish(goal.target_path);
   follow_path_client_->sendGoal(goal,
                                 boost::bind(&MoveBaseLiteRos::followPathDoneCb, this, _1, _2),
                                 actionlib::SimpleActionClient<move_base_lite_msgs::FollowPathAction>::SimpleActiveCallback(),

@@ -117,7 +117,6 @@ protected:
   ros::Subscriber simple_goal_sub_;
   ros::Subscriber map_sub_;
 
-  ros::Publisher path_pub_;
   ros::Publisher debug_map_pub_;
 
   ros::Publisher drivepath_pub_;
