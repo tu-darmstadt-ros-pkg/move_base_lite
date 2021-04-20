@@ -281,19 +281,8 @@ void MoveBaseLiteRos::exploreGoalCB() {
 
   explore_action_goal_ = explore_action_server_->acceptNewGoal();
 
-  geometry_msgs::PoseStamped current_pose;
-  if (!getPose(current_pose)){
-    std::string error_desc = "Unable to retrieve robot pose in move_base_lite, aborting!";
-    ROS_ERROR_STREAM(error_desc);
-    move_base_lite_msgs::ExploreResult result;
-    result.result.val = move_base_lite_msgs::ErrorCodes::PLANNING_FAILED;
-    explore_action_server_->setAborted(result, error_desc);
-    return;
-  }
-
-  nav_msgs::Path explorationPath;
-
-  if (!this->makeExplorationPlan(current_pose.pose, explorationPath.poses)){
+  move_base_lite_msgs::FollowPathGoal follow_path_goal;
+  if (!makeExplorationPlan(follow_path_goal)){
     //ROS_ERROR("Failed to generate exploration plan, aborting!");
     std::string error_desc = "Failed to generate exploration plan, aborting!";
     ROS_WARN_STREAM(error_desc);
@@ -303,17 +292,7 @@ void MoveBaseLiteRos::exploreGoalCB() {
     return;
   }
 
-  move_base_lite_msgs::FollowPathGoal follow_path_goal;
-
-  explorationPath.header.frame_id = "world";
-  follow_path_goal.target_path = explorationPath;
-
-  follow_path_goal.follow_path_options.desired_speed = explore_action_goal_->desired_speed;
-  follow_path_goal.follow_path_options.reset_stuck_history = explore_action_goal_->reset_stuck_history;
-  follow_path_goal.follow_path_options.reverse_allowed = true;
-
   sendActionToController(follow_path_goal);
-
 }
 
 void MoveBaseLiteRos::exploreCancelCB() {
@@ -346,15 +325,29 @@ bool MoveBaseLiteRos::makePlan(const geometry_msgs::Pose &start,
   return success;
 }
 
-bool MoveBaseLiteRos::makeExplorationPlan(const geometry_msgs::Pose &start,std::vector<geometry_msgs::PoseStamped> &plan)
+bool MoveBaseLiteRos::makeExplorationPlan(move_base_lite_msgs::FollowPathGoal& goal)
 {
-  bool success = grid_map_planner_->makeExplorationPlan(start, plan);
+  geometry_msgs::PoseStamped current_pose;
+  if (!getPose(current_pose)){
+    ROS_ERROR_STREAM("Unable to retrieve robot pose in move_base_lite, aborting!");
+    return false;
+  }
+
+  nav_msgs::Path path;
+  bool success = grid_map_planner_->makeExplorationPlan(current_pose.pose, path.poses);
 
   if (debug_map_pub_.getNumSubscribers() > 0){
     grid_map_msgs::GridMap grid_map_msg;
     grid_map::GridMapRosConverter::toMessage(grid_map_planner_->getPlanningMap(), grid_map_msg);
     debug_map_pub_.publish(grid_map_msg);
   }
+
+  path.header.frame_id = "world";
+  goal.target_path = path;
+
+  goal.follow_path_options.desired_speed = explore_action_goal_->desired_speed;
+  goal.follow_path_options.reset_stuck_history = explore_action_goal_->reset_stuck_history;
+  goal.follow_path_options.reverse_allowed = true;
 
   return success;
 }
@@ -394,15 +387,28 @@ void MoveBaseLiteRos::mapCallback(const nav_msgs::OccupancyGridConstPtr& msg)
   ROS_DEBUG("[move_base_lite] Received map.");
   latest_occ_grid_map_ = msg;
   grid_map::GridMapRosConverter::fromOccupancyGrid(*msg, std::string("occupancy"), grid_map_planner_->getPlanningMap());
-  if (move_base_action_server_->isActive()) {
+  if (move_base_action_server_->isActive() || explore_action_server_->isActive()) {
+    ROS_DEBUG("[move_base_lite] Planning new path");
+
     move_base_lite_msgs::FollowPathGoal follow_path_goal;
-    follow_path_goal.follow_path_options = move_base_action_goal_->follow_path_options;
-    if (move_base_action_goal_->plan_path_options.planning_approach == move_base_lite_msgs::PlanPathOptions::DEFAULT_COLLISION_FREE){
+    bool success = false;
+    if (move_base_action_server_->isActive() && move_base_action_goal_->plan_path_options.planning_approach == move_base_lite_msgs::PlanPathOptions::DEFAULT_COLLISION_FREE) {
+      follow_path_goal.follow_path_options = move_base_action_goal_->follow_path_options;
+
       if (generatePlanToGoal(current_goal_, follow_path_goal)){
-        sendActionToController(follow_path_goal);
+        success = true;
+      }
+    } else {
+      if (explore_action_server_->isActive()) {
+        if (makeExplorationPlan(follow_path_goal)){
+          success = true;
+        }
       }
     }
-    follow_path_goal.follow_path_options = move_base_action_goal_->follow_path_options;
+
+    if (success) {
+      sendActionToController(follow_path_goal);
+    }
   }
 }
 

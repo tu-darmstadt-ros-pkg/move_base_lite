@@ -105,7 +105,7 @@ protected:
   /**
    * @brief makeExplorationPlan wraps grid_map_planner function, optionally publishing debug map
    */
-  bool makeExplorationPlan(const geometry_msgs::Pose &start,std::vector<geometry_msgs::PoseStamped> &plan);
+  bool makeExplorationPlan(move_base_lite_msgs::FollowPathGoal& goal);
 
   bool generatePlanToGoal(geometry_msgs::PoseStamped& goal_pose, move_base_lite_msgs::FollowPathGoal& goal);
   void sendActionToController(const move_base_lite_msgs::FollowPathGoal& goal);
