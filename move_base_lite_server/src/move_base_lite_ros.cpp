@@ -394,6 +394,7 @@ void MoveBaseLiteRos::mapCallback(const nav_msgs::OccupancyGridConstPtr& msg)
     bool success = false;
     if (move_base_action_server_->isActive() && move_base_action_goal_->plan_path_options.planning_approach == move_base_lite_msgs::PlanPathOptions::DEFAULT_COLLISION_FREE) {
       follow_path_goal.follow_path_options = move_base_action_goal_->follow_path_options;
+      follow_path_goal.follow_path_options.reset_stuck_history = false; // Do not reset on re-planning
 
       if (generatePlanToGoal(current_goal_, follow_path_goal)){
         success = true;
