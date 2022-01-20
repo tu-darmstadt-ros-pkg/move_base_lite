@@ -112,6 +112,8 @@ protected:
 
   void mapCallback(const nav_msgs::OccupancyGridConstPtr& msg);
 
+  static void setOrientationUsed(geometry_msgs::PoseStamped& goal_pose, move_base_lite_msgs::FollowPathGoal& goal);
+
 
 
   ros::Subscriber simple_goal_sub_;

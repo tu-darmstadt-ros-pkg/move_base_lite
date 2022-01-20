@@ -111,6 +111,9 @@ void MoveBaseLiteRos::moveBaseGoalCB() {
   move_base_lite_msgs::FollowPathGoal follow_path_goal;
   follow_path_goal.follow_path_options = move_base_action_goal_->follow_path_options;
 
+  // Check if the orientation is not used (null-quaternion)
+  setOrientationUsed(current_goal_, follow_path_goal);
+
   if (move_base_action_goal_->plan_path_options.planning_approach == move_base_lite_msgs::PlanPathOptions::DEFAULT_COLLISION_FREE){
     if (generatePlanToGoal(current_goal_, follow_path_goal)){
       sendActionToController(follow_path_goal);
@@ -221,6 +224,7 @@ void MoveBaseLiteRos::simple_goalCB(const geometry_msgs::PoseStampedConstPtr &si
   }
 
   move_base_lite_msgs::FollowPathGoal follow_path_goal;
+  setOrientationUsed(current_goal_, follow_path_goal);
 
   if (generatePlanToGoal(current_goal_, follow_path_goal)){
     sendActionToController(follow_path_goal);
@@ -433,6 +437,18 @@ bool MoveBaseLiteRos::getPose(geometry_msgs::PoseStamped& pose_out)
   catch (tf::TransformException ex){
     ROS_WARN_THROTTLE(5.0, "[move_base_lite] tf lookup failed when trying to retrieve robot pose in move_base_lite:  %s. This message is throttled.",ex.what());
     return false;
+  }
+}
+
+void MoveBaseLiteRos::setOrientationUsed(geometry_msgs::PoseStamped& goal_pose, move_base_lite_msgs::FollowPathGoal& goal)
+{
+  if (goal_pose.pose.orientation.x == 0.0 &&
+      goal_pose.pose.orientation.y == 0.0 &&
+      goal_pose.pose.orientation.z == 0.0 &&
+      goal_pose.pose.orientation.w == 0.0) {
+    ROS_INFO_STREAM("Null-quaternion received. Orientation is ignored");
+    goal.follow_path_options.rotate_front_to_goal_pose_orientation = false;
+    goal_pose.pose.orientation.w = 1.0;
   }
 }
 
