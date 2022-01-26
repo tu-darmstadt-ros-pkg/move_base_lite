@@ -42,7 +42,6 @@ namespace move_base_lite{
 MoveBaseLiteRos::MoveBaseLiteRos(ros::NodeHandle& nh_, ros::NodeHandle& pnh_)
 {
   p_source_frame_name_ = "base_link";
-  p_target_frame_name_ = "world";
 
   pose_source_.header.frame_id = p_source_frame_name_;
   pose_source_.pose.orientation.w = 1.0;
@@ -346,7 +345,7 @@ bool MoveBaseLiteRos::makeExplorationPlan(move_base_lite_msgs::FollowPathGoal& g
     debug_map_pub_.publish(grid_map_msg);
   }
 
-  path.header.frame_id = "world";
+  path.header.frame_id = grid_map_planner_->getPlanningMap().getFrameId();
   goal.target_path = path;
 
   goal.follow_path_options.desired_speed = explore_action_goal_->desired_speed;
@@ -366,7 +365,7 @@ bool MoveBaseLiteRos::generatePlanToGoal(geometry_msgs::PoseStamped& goal_pose, 
     return false;
   }
 
-  goal.target_path.header.frame_id = "world";
+  goal.target_path.header.frame_id = grid_map_planner_->getPlanningMap().getFrameId();
 
   if (!this->makePlan(current_pose.pose, goal_pose.pose, goal.target_path.poses))
   {
@@ -426,7 +425,7 @@ bool MoveBaseLiteRos::getPose(geometry_msgs::PoseStamped& pose_out)
   pose_source_.header.stamp = ros::Time(0);
 
   try {
-    tfl_->transformPose(p_target_frame_name_, pose_source_, pose_out);
+    tfl_->transformPose(grid_map_planner_->getPlanningMap().getFrameId(), pose_source_, pose_out);
     ROS_DEBUG("[move_base_lite] source pose (%s): %f, %f, %f ---> target pose (%s): %f, %f, %f",
              pose_source_.header.frame_id.c_str(), pose_source_.pose.position.x, pose_source_.pose.position.y, pose_source_.pose.position.z,
              pose_out.header.frame_id.c_str(),pose_out.pose.position.x, pose_out.pose.position.y, pose_out.pose.position.z );

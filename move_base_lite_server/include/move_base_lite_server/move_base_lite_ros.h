@@ -148,8 +148,7 @@ protected:
   nav_msgs::OccupancyGridConstPtr latest_occ_grid_map_;
 
   std::string p_source_frame_name_;
-  std::string p_target_frame_name_;
-  
+
   typedef dynamic_reconfigure::Server<move_base_lite_server::MoveBaseLiteConfig> ReconfigureServer;
   boost::shared_ptr<ReconfigureServer> dyn_rec_server_;
   boost::recursive_mutex config_mutex_;
