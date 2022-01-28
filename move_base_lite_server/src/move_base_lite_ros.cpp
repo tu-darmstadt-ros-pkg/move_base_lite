@@ -96,7 +96,6 @@ void MoveBaseLiteRos::reconfigureCallback(move_base_lite_server::MoveBaseLiteCon
     
 }
 
-
 void MoveBaseLiteRos::moveBaseGoalCB() {
   ROS_DEBUG("[move_base_lite] In ActionServer goal callback");
   if (explore_action_server_->isActive()){
@@ -125,8 +124,6 @@ void MoveBaseLiteRos::moveBaseGoalCB() {
 
 }
 
-
-
 void MoveBaseLiteRos::moveBaseCancelCB() {
   if (move_base_action_server_->isActive()){
     move_base_lite_msgs::MoveBaseResult result;
@@ -143,46 +140,45 @@ void MoveBaseLiteRos::moveBaseCancelCB() {
 void MoveBaseLiteRos::followPathDoneCb(const actionlib::SimpleClientGoalState& state,
             const move_base_lite_msgs::FollowPathResultConstPtr& result_in)
 {
- if (result_in->result.val == move_base_lite_msgs::ErrorCodes::SUCCESS){
-    if (move_base_action_server_->isActive()){
+  if (result_in->result.val == move_base_lite_msgs::ErrorCodes::SUCCESS){
+    if (move_base_action_server_->isActive()) {
       move_base_lite_msgs::MoveBaseResult result;
       result.result.val = move_base_lite_msgs::ErrorCodes::SUCCESS;
       move_base_action_server_->setSucceeded(result, "reached goal");
-     }else if (explore_action_server_->isActive()){
-      move_base_lite_msgs::ExploreResult result;
-      result.result.val = move_base_lite_msgs::ErrorCodes::SUCCESS;
-      explore_action_server_->setSucceeded(result, "reached goal");
+    } else if (explore_action_server_->isActive()) {
+      // If we reach our current goal, wait for the next map to update our path
+        ROS_INFO_STREAM("Reached current exploration goal, waiting for next map update");
+//      move_base_lite_msgs::ExploreResult result;
+//      result.result.val = move_base_lite_msgs::ErrorCodes::SUCCESS;
+//      explore_action_server_->setSucceeded(result, "reached goal");
     }
 
-  }else if (result_in->result.val == move_base_lite_msgs::ErrorCodes::CONTROL_FAILED){
+  } else if (result_in->result.val == move_base_lite_msgs::ErrorCodes::CONTROL_FAILED) {
     // If control fails (meaning carrot is more than threshold away from robot), we try replanning
     move_base_lite_msgs::FollowPathGoal follow_path_goal;
 
-    if (move_base_action_server_->isActive()){
+    if (move_base_action_server_->isActive()) {
       follow_path_goal.follow_path_options = move_base_action_goal_->follow_path_options;
-
-      if (move_base_action_goal_->plan_path_options.planning_approach == move_base_lite_msgs::PlanPathOptions::NO_PLANNNING_FORWARD_GOAL){
+      if (move_base_action_goal_->plan_path_options.planning_approach == move_base_lite_msgs::PlanPathOptions::NO_PLANNNING_FORWARD_GOAL) {
         follow_path_goal.target_path.poses.push_back(current_goal_);
         sendActionToController(follow_path_goal);
-      }else{
-      if (generatePlanToGoal(current_goal_, follow_path_goal)){
-        sendActionToController(follow_path_goal);
-      }else{
-        move_base_lite_msgs::MoveBaseResult result;
-        result.result.val = move_base_lite_msgs::ErrorCodes::PLANNING_FAILED;
-        move_base_action_server_->setAborted(result, "Planning failed when trying to replan after control failure.");
-      }
+      } else {
+        if (generatePlanToGoal(current_goal_, follow_path_goal)) {
+          sendActionToController(follow_path_goal);
+        } else {
+          move_base_lite_msgs::MoveBaseResult result;
+          result.result.val = move_base_lite_msgs::ErrorCodes::PLANNING_FAILED;
+          move_base_action_server_->setAborted(result, "Planning failed when trying to replan after control failure.");
+        }
       }
     }
+    if (explore_action_server_->isActive()) {
+      move_base_lite_msgs::ExploreResult result;
+      result.result.val = move_base_lite_msgs::ErrorCodes::PLANNING_FAILED;
+      explore_action_server_->setAborted(result, "Control failed while following exploration plan.");
+	  }
 
-    if (explore_action_server_->isActive()){
-
-          move_base_lite_msgs::ExploreResult result;
-          result.result.val = move_base_lite_msgs::ErrorCodes::PLANNING_FAILED;
-          explore_action_server_->setAborted(result, "Control failed while following exploration plan.");
-	}
-
-  }else{
+  } else {
     if (move_base_action_server_->isActive()){
       move_base_lite_msgs::MoveBaseResult result;
       result.result.val = result_in->result.val;
@@ -285,17 +281,19 @@ void MoveBaseLiteRos::exploreGoalCB() {
   explore_action_goal_ = explore_action_server_->acceptNewGoal();
 
   move_base_lite_msgs::FollowPathGoal follow_path_goal;
-  if (!makeExplorationPlan(follow_path_goal)){
-    //ROS_ERROR("Failed to generate exploration plan, aborting!");
-    std::string error_desc = "Failed to generate exploration plan, aborting!";
-    ROS_WARN_STREAM(error_desc);
-    move_base_lite_msgs::ExploreResult result;
-    result.result.val = move_base_lite_msgs::ErrorCodes::PLANNING_FAILED;
-    explore_action_server_->setAborted(result, error_desc);
-    return;
-  }
+  if (makeExplorationPlan(follow_path_goal)) {
 
-  sendActionToController(follow_path_goal);
+    // Check if we received a path
+    if (follow_path_goal.target_path.poses.empty()) {
+      move_base_lite_msgs::ExploreResult result;
+      result.result.val = move_base_lite_msgs::ErrorCodes::SUCCESS;
+      explore_action_server_->setSucceeded(result, "The map is fully discovered.");
+      return;
+    }
+
+    sendActionToController(follow_path_goal);
+  }
+  // If planning failed, do nothing and wait for the next map update
 }
 
 void MoveBaseLiteRos::exploreCancelCB() {
@@ -309,7 +307,6 @@ void MoveBaseLiteRos::exploreCancelCB() {
   }else{
     ROS_WARN("[move_base_lite] Cancel request although exploration server ist not active!");
   }
-
 }
 
 bool MoveBaseLiteRos::makePlan(const geometry_msgs::Pose &start,
@@ -323,7 +320,6 @@ bool MoveBaseLiteRos::makePlan(const geometry_msgs::Pose &start,
     grid_map::GridMapRosConverter::toMessage(grid_map_planner_->getPlanningMap(), grid_map_msg);
     debug_map_pub_.publish(grid_map_msg);
   }
-
 
   return success;
 }
@@ -355,7 +351,6 @@ bool MoveBaseLiteRos::makeExplorationPlan(move_base_lite_msgs::FollowPathGoal& g
   return success;
 }
 
-
 bool MoveBaseLiteRos::generatePlanToGoal(geometry_msgs::PoseStamped& goal_pose, move_base_lite_msgs::FollowPathGoal& goal)
 {
   geometry_msgs::PoseStamped current_pose;
@@ -384,7 +379,6 @@ void MoveBaseLiteRos::sendActionToController(const move_base_lite_msgs::FollowPa
                                 actionlib::SimpleActionClient<move_base_lite_msgs::FollowPathAction>::SimpleFeedbackCallback());
 }
 
-
 void MoveBaseLiteRos::mapCallback(const nav_msgs::OccupancyGridConstPtr& msg)
 {
   ROS_DEBUG("[move_base_lite] Received map.");
@@ -405,7 +399,19 @@ void MoveBaseLiteRos::mapCallback(const nav_msgs::OccupancyGridConstPtr& msg)
     } else {
       if (explore_action_server_->isActive()) {
         if (makeExplorationPlan(follow_path_goal)){
+          follow_path_goal.follow_path_options.reset_stuck_history = false; // Never reset on re-planning
           success = true;
+          // Check if the map is already fully discovered
+          if (follow_path_goal.target_path.poses.empty()) {
+            // Cancel active follow path goals
+            if (follow_path_client_->isServerConnected()){
+              follow_path_client_->cancelAllGoals();
+            }
+            move_base_lite_msgs::ExploreResult result;
+            result.result.val = move_base_lite_msgs::ErrorCodes::SUCCESS;
+            explore_action_server_->setSucceeded(result, "The map is fully discovered.");
+            return;
+          }
         }
       }
     }
@@ -433,7 +439,7 @@ bool MoveBaseLiteRos::getPose(geometry_msgs::PoseStamped& pose_out)
 
       //pose_pub_.publish(pose_out);
   }
-  catch (tf::TransformException ex){
+  catch (const tf::TransformException& ex){
     ROS_WARN_THROTTLE(5.0, "[move_base_lite] tf lookup failed when trying to retrieve robot pose in move_base_lite:  %s. This message is throttled.",ex.what());
     return false;
   }
