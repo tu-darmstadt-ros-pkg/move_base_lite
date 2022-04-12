@@ -112,7 +112,7 @@ protected:
 
   void mapCallback(const nav_msgs::OccupancyGridConstPtr& msg);
 
-  static void setOrientationUsed(geometry_msgs::PoseStamped& goal_pose, move_base_lite_msgs::FollowPathGoal& goal);
+  static void setOrientationUsed(geometry_msgs::PoseStamped& goal_pose, move_base_lite_msgs::FollowPathOptions& options);
 
 
 
@@ -133,6 +133,7 @@ protected:
 
   boost::shared_ptr<actionlib::SimpleActionServer<move_base_lite_msgs::MoveBaseAction> > move_base_action_server_;
   actionlib::SimpleActionServer<move_base_lite_msgs::MoveBaseAction>::GoalConstPtr move_base_action_goal_;
+  move_base_lite_msgs::FollowPathOptions follow_path_options_;
 
   boost::shared_ptr<actionlib::SimpleActionServer<move_base_lite_msgs::ExploreAction> > explore_action_server_;
   actionlib::SimpleActionServer<move_base_lite_msgs::ExploreAction>::GoalConstPtr explore_action_goal_;

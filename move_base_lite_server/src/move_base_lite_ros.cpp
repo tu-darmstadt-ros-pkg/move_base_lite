@@ -103,20 +103,20 @@ void MoveBaseLiteRos::moveBaseGoalCB() {
   }
   
   move_base_action_goal_ = move_base_action_server_->acceptNewGoal();
-
   current_goal_ = move_base_action_goal_->target_pose;
-
-  move_base_lite_msgs::FollowPathGoal follow_path_goal;
-  follow_path_goal.follow_path_options = move_base_action_goal_->follow_path_options;
+  follow_path_options_ = move_base_action_goal_->follow_path_options;
 
   // Check if the orientation is not used (null-quaternion)
-  setOrientationUsed(current_goal_, follow_path_goal);
+  setOrientationUsed(current_goal_, follow_path_options_);
+
+  move_base_lite_msgs::FollowPathGoal follow_path_goal;
+  follow_path_goal.follow_path_options = follow_path_options_;
 
   if (move_base_action_goal_->plan_path_options.planning_approach == move_base_lite_msgs::PlanPathOptions::DEFAULT_COLLISION_FREE){
     if (generatePlanToGoal(current_goal_, follow_path_goal)){
       sendActionToController(follow_path_goal);
     }
-  }else if(move_base_action_goal_->plan_path_options.planning_approach == move_base_lite_msgs::PlanPathOptions::NO_PLANNNING_FORWARD_GOAL){
+  } else if(move_base_action_goal_->plan_path_options.planning_approach == move_base_lite_msgs::PlanPathOptions::NO_PLANNNING_FORWARD_GOAL){
     // Push original target pose into path to follow
     follow_path_goal.target_path.poses.push_back(current_goal_);
     sendActionToController(follow_path_goal);
@@ -219,7 +219,7 @@ void MoveBaseLiteRos::simple_goalCB(const geometry_msgs::PoseStampedConstPtr &si
   }
 
   move_base_lite_msgs::FollowPathGoal follow_path_goal;
-  setOrientationUsed(current_goal_, follow_path_goal);
+  setOrientationUsed(current_goal_, follow_path_goal.follow_path_options);
 
   if (generatePlanToGoal(current_goal_, follow_path_goal)){
     sendActionToController(follow_path_goal);
@@ -390,7 +390,7 @@ void MoveBaseLiteRos::mapCallback(const nav_msgs::OccupancyGridConstPtr& msg)
     move_base_lite_msgs::FollowPathGoal follow_path_goal;
     bool success = false;
     if (move_base_action_server_->isActive() && move_base_action_goal_->plan_path_options.planning_approach == move_base_lite_msgs::PlanPathOptions::DEFAULT_COLLISION_FREE) {
-      follow_path_goal.follow_path_options = move_base_action_goal_->follow_path_options;
+      follow_path_goal.follow_path_options = follow_path_options_;
       follow_path_goal.follow_path_options.reset_stuck_history = false; // Do not reset on re-planning
 
       if (generatePlanToGoal(current_goal_, follow_path_goal)){
@@ -445,14 +445,14 @@ bool MoveBaseLiteRos::getPose(geometry_msgs::PoseStamped& pose_out)
   }
 }
 
-void MoveBaseLiteRos::setOrientationUsed(geometry_msgs::PoseStamped& goal_pose, move_base_lite_msgs::FollowPathGoal& goal)
+void MoveBaseLiteRos::setOrientationUsed(geometry_msgs::PoseStamped& goal_pose, move_base_lite_msgs::FollowPathOptions& options)
 {
   if (goal_pose.pose.orientation.x == 0.0 &&
       goal_pose.pose.orientation.y == 0.0 &&
       goal_pose.pose.orientation.z == 0.0 &&
       goal_pose.pose.orientation.w == 0.0) {
     ROS_INFO_STREAM("Null-quaternion received. Orientation is ignored");
-    goal.follow_path_options.rotate_front_to_goal_pose_orientation = false;
+    options.rotate_front_to_goal_pose_orientation = false;
     goal_pose.pose.orientation.w = 1.0;
   }
 }
