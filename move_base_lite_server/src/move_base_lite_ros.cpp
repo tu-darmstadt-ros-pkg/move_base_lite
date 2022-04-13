@@ -107,7 +107,7 @@ void MoveBaseLiteRos::moveBaseGoalCB() {
   follow_path_options_ = move_base_action_goal_->follow_path_options;
 
   // Check if the orientation is not used (null-quaternion)
-  setOrientationUsed(current_goal_, follow_path_options_);
+  handleNullOrientation(current_goal_, follow_path_options_);
 
   move_base_lite_msgs::FollowPathGoal follow_path_goal;
   follow_path_goal.follow_path_options = follow_path_options_;
@@ -219,7 +219,7 @@ void MoveBaseLiteRos::simple_goalCB(const geometry_msgs::PoseStampedConstPtr &si
   }
 
   move_base_lite_msgs::FollowPathGoal follow_path_goal;
-  setOrientationUsed(current_goal_, follow_path_goal.follow_path_options);
+  handleNullOrientation(current_goal_, follow_path_goal.follow_path_options);
 
   if (generatePlanToGoal(current_goal_, follow_path_goal)){
     sendActionToController(follow_path_goal);
@@ -445,14 +445,14 @@ bool MoveBaseLiteRos::getPose(geometry_msgs::PoseStamped& pose_out)
   }
 }
 
-void MoveBaseLiteRos::setOrientationUsed(geometry_msgs::PoseStamped& goal_pose, move_base_lite_msgs::FollowPathOptions& options)
+void MoveBaseLiteRos::handleNullOrientation(geometry_msgs::PoseStamped& goal_pose, move_base_lite_msgs::FollowPathOptions& options)
 {
   if (goal_pose.pose.orientation.x == 0.0 &&
       goal_pose.pose.orientation.y == 0.0 &&
       goal_pose.pose.orientation.z == 0.0 &&
       goal_pose.pose.orientation.w == 0.0) {
     ROS_INFO_STREAM("Null-quaternion received. Orientation is ignored");
-    options.rotate_front_to_goal_pose_orientation = false;
+    options.goal_pose_angle_tolerance = M_PI;
     goal_pose.pose.orientation.w = 1.0;
   }
 }
