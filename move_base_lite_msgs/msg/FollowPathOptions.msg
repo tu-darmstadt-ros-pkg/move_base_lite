@@ -29,3 +29,7 @@ bool reverse_forced
 # If true, resets the pose history used for stuck detection
 # to prevent getting stuck immediately
 bool reset_stuck_history
+
+# Path is converted into this frame to perform path
+# following control. If left empty, default frame is used
+string control_frame
