@@ -42,6 +42,7 @@ namespace move_base_lite{
 MoveBaseLiteRos::MoveBaseLiteRos(ros::NodeHandle& nh_, ros::NodeHandle& pnh_)
 {
   p_source_frame_name_ = "base_link";
+  p_replan_on_new_map_ = true;
 
   pose_source_.header.frame_id = p_source_frame_name_;
   pose_source_.pose.orientation.w = 1.0;
@@ -93,7 +94,7 @@ void MoveBaseLiteRos::reconfigureCallback(move_base_lite_server::MoveBaseLiteCon
             );
     
     grid_map_planner_->setDistanceThresholds(config.lethal_dist, config.penalty_dist, config.penalty_weight);
-    
+    p_replan_on_new_map_ = config.replan_on_new_map;
 }
 
 void MoveBaseLiteRos::moveBaseGoalCB() {
@@ -384,7 +385,7 @@ void MoveBaseLiteRos::mapCallback(const nav_msgs::OccupancyGridConstPtr& msg)
   ROS_DEBUG("[move_base_lite] Received map.");
   latest_occ_grid_map_ = msg;
   grid_map::GridMapRosConverter::fromOccupancyGrid(*msg, std::string("occupancy"), grid_map_planner_->getPlanningMap());
-  if (move_base_action_server_->isActive() || explore_action_server_->isActive()) {
+  if (p_replan_on_new_map_ && (move_base_action_server_->isActive() || explore_action_server_->isActive())) {
     ROS_DEBUG("[move_base_lite] Planning new path");
 
     move_base_lite_msgs::FollowPathGoal follow_path_goal;

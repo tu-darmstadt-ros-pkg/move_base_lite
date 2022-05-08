@@ -149,6 +149,7 @@ protected:
   nav_msgs::OccupancyGridConstPtr latest_occ_grid_map_;
 
   std::string p_source_frame_name_;
+  bool p_replan_on_new_map_;
 
   typedef dynamic_reconfigure::Server<move_base_lite_server::MoveBaseLiteConfig> ReconfigureServer;
   boost::shared_ptr<ReconfigureServer> dyn_rec_server_;
