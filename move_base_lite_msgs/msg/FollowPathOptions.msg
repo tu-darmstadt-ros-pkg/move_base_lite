@@ -26,6 +26,10 @@ bool reverse_allowed
 # Only works if reverse_allowed is true as well
 bool reverse_forced
 
+# If true, the robot uses the orientation of path poses to determine
+# driving direction. Only applies if driving in reverse is allowed.
+bool use_path_orientation
+
 # If true, resets the pose history used for stuck detection
 # to prevent getting stuck immediately
 bool reset_stuck_history
