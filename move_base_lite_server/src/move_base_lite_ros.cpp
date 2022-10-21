@@ -389,7 +389,9 @@ void MoveBaseLiteRos::mapCallback(const nav_msgs::OccupancyGridConstPtr& msg)
 {
   ROS_DEBUG("[move_base_lite] Received map.");
   latest_occ_grid_map_ = msg;
-  grid_map::GridMapRosConverter::fromOccupancyGrid(*msg, std::string("occupancy"), grid_map_planner_->getPlanningMap());
+  grid_map::GridMap occupancy_map;
+  grid_map::GridMapRosConverter::fromOccupancyGrid(*msg, std::string("occupancy"), occupancy_map);
+  grid_map_planner_->setMap(occupancy_map);
   if (p_replan_on_new_map_ && (move_base_action_server_->isActive() || explore_action_server_->isActive())) {
     ROS_DEBUG("[move_base_lite] Planning new path");
 
