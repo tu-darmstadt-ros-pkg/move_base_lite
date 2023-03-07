@@ -114,6 +114,14 @@ void MoveBaseLiteRos::moveBaseGoalCB() {
   // Check if the orientation is not used (null-quaternion)
   handleNullOrientation(current_goal_, follow_path_options_);
 
+  // Transform goal pose to map frame
+  if (!transformGoal(current_goal_, grid_map_planner_->getPlanningMap().getFrameId())) {
+    move_base_lite_msgs::MoveBaseResult result;
+    result.result.val = move_base_lite_msgs::ErrorCodes::PLANNING_FAILED;
+    move_base_action_server_->setAborted(result, "Failed to transform goal to map frame.");
+  }
+
+
   move_base_lite_msgs::FollowPathGoal follow_path_goal;
   follow_path_goal.follow_path_options = follow_path_options_;
 
@@ -366,8 +374,6 @@ bool MoveBaseLiteRos::generatePlanToGoal(geometry_msgs::PoseStamped& goal_pose, 
     return false;
   }
 
-  goal.target_path.header.frame_id = grid_map_planner_->getPlanningMap().getFrameId();
-
   if (!this->makePlan(current_pose.pose, goal_pose.pose, goal.target_path.poses))
   {
     ROS_ERROR("[move_base_lite] Planning to goal pose failed, aborting planning.");
@@ -462,6 +468,21 @@ void MoveBaseLiteRos::handleNullOrientation(geometry_msgs::PoseStamped& goal_pos
     ROS_INFO_STREAM("Null-quaternion received. Orientation is ignored");
     options.goal_pose_angle_tolerance = M_PI;
     goal_pose.pose.orientation.w = 1.0;
+  }
+}
+
+bool MoveBaseLiteRos::transformGoal(geometry_msgs::PoseStamped& goal_pose, const std::string& target_frame_id)
+{
+  if (goal_pose.header.frame_id == target_frame_id) {
+    return true;
+  }
+  try {
+    tfl_->transformPose(target_frame_id, goal_pose, goal_pose);
+    return true;
+  }
+  catch (const tf::TransformException& ex) {
+    ROS_WARN_STREAM("Failed to transform goal pose: " << ex.what());
+    return false;
   }
 }
 

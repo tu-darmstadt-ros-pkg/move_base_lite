@@ -113,6 +113,7 @@ protected:
   void mapCallback(const nav_msgs::OccupancyGridConstPtr& msg);
 
   static void handleNullOrientation(geometry_msgs::PoseStamped& goal_pose, move_base_lite_msgs::FollowPathOptions& options);
+  bool transformGoal(geometry_msgs::PoseStamped& goal_pose, const std::string& target_frame_id);
 
 
 
