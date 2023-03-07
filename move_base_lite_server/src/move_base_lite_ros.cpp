@@ -128,8 +128,13 @@ void MoveBaseLiteRos::moveBaseGoalCB() {
   if (move_base_action_goal_->plan_path_options.planning_approach == move_base_lite_msgs::PlanPathOptions::DEFAULT_COLLISION_FREE){
     if (generatePlanToGoal(current_goal_, follow_path_goal)){
       sendActionToController(follow_path_goal);
+    } else {
+      move_base_lite_msgs::MoveBaseResult result;
+      result.result.val = move_base_lite_msgs::ErrorCodes::PLANNING_FAILED;
+      move_base_action_server_->setAborted(result, "Failed to compute path.");
     }
-  } else if(move_base_action_goal_->plan_path_options.planning_approach == move_base_lite_msgs::PlanPathOptions::NO_PLANNNING_FORWARD_GOAL){
+  } else {
+    // NO_PLANNNING_FORWARD_GOAL
     // Push original target pose into path to follow
     follow_path_goal.target_path.poses.push_back(current_goal_);
     sendActionToController(follow_path_goal);
