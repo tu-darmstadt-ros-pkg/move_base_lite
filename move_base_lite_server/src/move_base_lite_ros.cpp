@@ -379,6 +379,8 @@ bool MoveBaseLiteRos::generatePlanToGoal(geometry_msgs::PoseStamped& goal_pose, 
     return false;
   }
 
+  goal.target_path.header.frame_id = grid_map_planner_->getPlanningMap().getFrameId();
+
   if (!this->makePlan(current_pose.pose, goal_pose.pose, goal.target_path.poses))
   {
     ROS_ERROR("[move_base_lite] Planning to goal pose failed, aborting planning.");
