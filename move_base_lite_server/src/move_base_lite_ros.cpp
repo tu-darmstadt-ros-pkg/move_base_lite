@@ -362,6 +362,12 @@ bool MoveBaseLiteRos::makeExplorationPlan(move_base_lite_msgs::FollowPathGoal& g
 
   path.header.frame_id = grid_map_planner_->getPlanningMap().getFrameId();
   goal.target_path = path;
+  // Ignore the final orientation
+  goal.target_path.poses.back().pose.orientation.x = 0.0;
+  goal.target_path.poses.back().pose.orientation.y = 0.0;
+  goal.target_path.poses.back().pose.orientation.z = 0.0;
+  goal.target_path.poses.back().pose.orientation.w = 1.0;
+  goal.follow_path_options.goal_pose_angle_tolerance = M_PI;
 
   goal.follow_path_options.desired_speed = explore_action_goal_->desired_speed;
   goal.follow_path_options.reset_stuck_history = explore_action_goal_->reset_stuck_history;
