@@ -88,16 +88,18 @@ MoveBaseLiteRos::MoveBaseLiteRos(ros::NodeHandle& nh_, ros::NodeHandle& pnh_)
 void MoveBaseLiteRos::reconfigureCallback(move_base_lite_server::MoveBaseLiteConfig &config, uint32_t level) {
 
     ROS_INFO("move_base_lite_server received dynamic reconfigure, lethal dist: %f, penalty dist: %f penalty_weight: %f, "
-           "replan_on_new_map: %d, goal_distance_from_obstacles: %f",
+           "replan_on_new_map: %d, goal_distance_from_obstacles: %f, min_frontier_distance: %f",
              config.lethal_dist,
              config.penalty_dist,
              config.penalty_weight,
              config.replan_on_new_map,
-             config.goal_distance_from_obstacles
+             config.goal_distance_from_obstacles,
+             config.min_frontier_distance
             );
     
     grid_map_planner_->setDistanceThresholds(config.lethal_dist, config.penalty_dist, config.penalty_weight);
     grid_map_planner_->setGoalDistanceFromObstacles(config.goal_distance_from_obstacles);
+    grid_map_planner_->setMinFrontierDistance(config.min_frontier_distance);
     p_replan_on_new_map_ = config.replan_on_new_map;
 }
 
