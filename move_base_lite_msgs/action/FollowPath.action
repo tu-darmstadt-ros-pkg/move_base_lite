@@ -13,6 +13,10 @@ uint32 current_waypoint
 float64 current_percent_complete
 float64 total_percent_complete
 
+# Provide feedback on the distance and estimated remaining time to the goal point
+float64 distance_to_goal_point
+float64 time_to_goal_point
+
 # Duration since start_time of the current waypoint.
 # The duration matches the actual traversed path, e.g. if the robot is stuck, it won't increase
 duration actual_duration_since_start
