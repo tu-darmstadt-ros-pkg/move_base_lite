@@ -394,6 +394,7 @@ bool MoveBaseLiteRos::generatePlanToGoal(geometry_msgs::PoseStamped& goal_pose, 
   }
 
   goal.target_path.header.frame_id = grid_map_planner_->getPlanningMap().getFrameId();
+  goal.target_path.header.stamp = current_pose.header.stamp;
 
   if (!this->makePlan(current_pose.pose, goal_pose.pose, goal.target_path.poses))
   {
