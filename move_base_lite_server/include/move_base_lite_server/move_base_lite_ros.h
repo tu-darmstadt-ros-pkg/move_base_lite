@@ -38,8 +38,6 @@
 #include <actionlib/server/simple_action_server.h>
 #include <move_base_msgs/MoveBaseAction.h>
 
-#include <hector_move_base_msgs/MoveBaseAction.h>
-
 #include <move_base_lite_msgs/FollowPathAction.h>
 #include <move_base_lite_msgs/MoveBaseAction.h>
 #include <move_base_lite_msgs/ExploreAction.h>
@@ -94,7 +92,6 @@ protected:
 
   void simple_goalCB(const geometry_msgs::PoseStampedConstPtr &simpleGoal);
   //void cmd_velCB(const ros::MessageEvent<geometry_msgs::Twist> &event);
-  //void controllerResultCB(const hector_move_base_msgs::MoveBaseActionResultConstPtr &result);
 
   /**
    * @brief makePlan wraps grid_map_planner function, optionally publishing debug map

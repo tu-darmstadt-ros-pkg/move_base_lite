@@ -28,8 +28,6 @@
 
 #include <move_base_lite_server/move_base_lite_ros.h>
 
-#include <hector_move_base_msgs/MoveBaseActionPath.h>
-
 #include <grid_map_ros/GridMapRosConverter.hpp>
 
 #include <nav_msgs/Path.h>
@@ -63,7 +61,6 @@ MoveBaseLiteRos::MoveBaseLiteRos(ros::NodeHandle& nh_, ros::NodeHandle& pnh_)
 
 
   drivepath_pub_ = pnh_.advertise<nav_msgs::Path>("path", 1, true);
-  //controller_result_sub_ = controller_nh.subscribe<hector_move_base_msgs::MoveBaseActionResult>("result", 1, boost::bind(&MoveBaseLiteRos::controllerResultCB, this, _1));
 
   simple_goal_sub_ = pnh_.subscribe<geometry_msgs::PoseStamped>("/move_base/simple_goal", 1, boost::bind(&MoveBaseLiteRos::simple_goalCB, this, _1));
   //simple_goal_sub_ = pnh_.subscribe<geometry_msgs::PoseStamped>("/goal", 1, boost::bind(&MoveBaseLiteRos::goalCB, this, _1));
