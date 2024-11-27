@@ -40,6 +40,7 @@
 
 #include <move_base_lite_msgs/FollowPathAction.h>
 #include <move_base_lite_msgs/MoveBaseAction.h>
+#include <move_base_lite_msgs/MoveBaseMultiGoalAction.h>
 #include <move_base_lite_msgs/ExploreAction.h>
 
 #include <actionlib/client/simple_action_client.h>
@@ -81,6 +82,9 @@ protected:
   void moveBaseGoalCB();
   void moveBaseCancelCB();
 
+  void moveBaseMultiGoalCB();
+  void moveBaseMultiGoalCancelCB();
+
   void exploreGoalCB();
   void exploreCancelCB();
 
@@ -105,11 +109,13 @@ protected:
   bool makeExplorationPlan(move_base_lite_msgs::FollowPathGoal& goal);
 
   bool generatePlanToGoal(geometry_msgs::PoseStamped& goal_pose, move_base_lite_msgs::FollowPathGoal& goal);
+  bool generatePlanToGoals(nav_msgs::Path& goal_poses, move_base_lite_msgs::FollowPathGoal& goal);
   void sendActionToController(const move_base_lite_msgs::FollowPathGoal& goal);
 
   void mapCallback(const nav_msgs::OccupancyGridConstPtr& msg);
 
   static void handleNullOrientation(geometry_msgs::PoseStamped& goal_pose, move_base_lite_msgs::FollowPathOptions& options);
+  static void handleNullOrientation(nav_msgs::Path& goal_poses, move_base_lite_msgs::FollowPathOptions& options);
   bool transformGoal(geometry_msgs::PoseStamped& goal_pose, const std::string& target_frame_id);
 
 
@@ -131,6 +137,8 @@ protected:
 
   boost::shared_ptr<actionlib::SimpleActionServer<move_base_lite_msgs::MoveBaseAction> > move_base_action_server_;
   actionlib::SimpleActionServer<move_base_lite_msgs::MoveBaseAction>::GoalConstPtr move_base_action_goal_;
+  boost::shared_ptr<actionlib::SimpleActionServer<move_base_lite_msgs::MoveBaseMultiGoalAction> > move_base_multi_goal_action_server_;
+  actionlib::SimpleActionServer<move_base_lite_msgs::MoveBaseMultiGoalAction>::GoalConstPtr move_base_multi_goal_action_goal_;
   move_base_lite_msgs::FollowPathOptions follow_path_options_;
 
   boost::shared_ptr<actionlib::SimpleActionServer<move_base_lite_msgs::ExploreAction> > explore_action_server_;
@@ -141,6 +149,7 @@ protected:
 
   // Always set this on receiving  plan
   geometry_msgs::PoseStamped current_goal_;
+  nav_msgs::Path current_goals_;
 
   geometry_msgs::PoseStamped pose_source_;
 

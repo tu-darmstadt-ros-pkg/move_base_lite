@@ -1,0 +1,13 @@
+nav_msgs/Path target_poses
+
+PlanPathOptions   plan_path_options
+
+FollowPathOptions follow_path_options
+
+---
+
+ErrorCodes result
+
+---
+
+float64 percent_complete

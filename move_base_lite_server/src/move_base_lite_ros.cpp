@@ -46,7 +46,7 @@ MoveBaseLiteRos::MoveBaseLiteRos(ros::NodeHandle& nh_, ros::NodeHandle& pnh_)
   pose_source_.pose.orientation.w = 1.0;
 
   move_base_action_server_.reset(new actionlib::SimpleActionServer<move_base_lite_msgs::MoveBaseAction>(nh_, "/move_base", false));
-
+  move_base_multi_goal_action_server_.reset(new actionlib::SimpleActionServer<move_base_lite_msgs::MoveBaseMultiGoalAction>(nh_, "/move_base_multi_goal", false));
   explore_action_server_.reset(new actionlib::SimpleActionServer<move_base_lite_msgs::ExploreAction>(nh_, "/explore", false));
 
   tfl_ = boost::make_shared<tf::TransformListener>();
@@ -70,6 +70,10 @@ MoveBaseLiteRos::MoveBaseLiteRos(ros::NodeHandle& nh_, ros::NodeHandle& pnh_)
   move_base_action_server_->registerGoalCallback(boost::bind(&MoveBaseLiteRos::moveBaseGoalCB, this));
   move_base_action_server_->registerPreemptCallback(boost::bind(&MoveBaseLiteRos::moveBaseCancelCB, this));
   move_base_action_server_->start();
+
+  move_base_multi_goal_action_server_->registerGoalCallback(boost::bind(&MoveBaseLiteRos::moveBaseMultiGoalCB, this));
+  move_base_multi_goal_action_server_->registerPreemptCallback(boost::bind(&MoveBaseLiteRos::moveBaseMultiGoalCancelCB, this));
+  move_base_multi_goal_action_server_->start();
 
   explore_action_server_->registerGoalCallback(boost::bind(&MoveBaseLiteRos::exploreGoalCB, this));
   explore_action_server_->registerPreemptCallback(boost::bind(&MoveBaseLiteRos::exploreCancelCB, this));
@@ -144,14 +148,86 @@ void MoveBaseLiteRos::moveBaseGoalCB() {
 }
 
 void MoveBaseLiteRos::moveBaseCancelCB() {
-  if (move_base_action_server_->isActive()){
+  if (move_base_action_server_->isActive()) {
     move_base_lite_msgs::MoveBaseResult result;
     result.result.val = move_base_lite_msgs::ErrorCodes::PREEMPTED;
     move_base_action_server_->setPreempted(result, "preempt from incoming message to server");
     if (follow_path_client_->isServerConnected()){
         follow_path_client_->cancelAllGoals();
     }
-  }else{
+  } else {
+    ROS_WARN("[move_base_lite] Cancel request although server ist not active!");
+  }
+}
+
+void MoveBaseLiteRos::moveBaseMultiGoalCB() {
+  ROS_DEBUG("[move_base_lite] In ActionServer goal callback");
+  if (explore_action_server_->isActive()){
+    exploreCancelCB();
+  }
+  if (move_base_action_server_->isActive()){
+    moveBaseCancelCB();
+  }
+  move_base_multi_goal_action_goal_ = move_base_multi_goal_action_server_->acceptNewGoal();
+  if (move_base_multi_goal_action_goal_->target_poses.poses.empty()) {
+    move_base_lite_msgs::MoveBaseMultiGoalResult result;
+    result.result.val = move_base_lite_msgs::ErrorCodes::SUCCESS;
+    move_base_multi_goal_action_server_->setSucceeded(result, "goal list empty");
+  }
+  current_goals_ = move_base_multi_goal_action_goal_->target_poses;
+  current_goal_ = current_goals_.poses.back();
+  follow_path_options_ = move_base_multi_goal_action_goal_->follow_path_options;
+
+  // Check if the orientation is not used (null-quaternion)
+  handleNullOrientation(current_goals_, follow_path_options_);
+
+  // Transform goal pose to map frame
+  for (auto& pose: current_goals_.poses) {
+    if (!transformGoal(pose, grid_map_planner_->getPlanningMap().getFrameId())) {
+      move_base_lite_msgs::MoveBaseMultiGoalResult result;
+      result.result.val = move_base_lite_msgs::ErrorCodes::PLANNING_FAILED;
+      move_base_multi_goal_action_server_->setAborted(result, "Failed to transform goal to map frame.");
+    }
+  }
+
+  move_base_lite_msgs::FollowPathGoal follow_path_goal;
+  follow_path_goal.follow_path_options = follow_path_options_;
+
+  if (generatePlanToGoals(current_goals_, follow_path_goal)){
+    sendActionToController(follow_path_goal);
+  } else {
+    move_base_lite_msgs::MoveBaseResult result;
+    result.result.val = move_base_lite_msgs::ErrorCodes::PLANNING_FAILED;
+    move_base_action_server_->setAborted(result, "Failed to compute path.");
+  }
+
+  // TODO support option NO_PLANNNING_FORWARD_GOAL
+//  if (move_base_action_goal_->plan_path_options.planning_approach == move_base_lite_msgs::PlanPathOptions::DEFAULT_COLLISION_FREE){
+//    if (generatePlanToGoal(current_goal_, follow_path_goal)){
+//      sendActionToController(follow_path_goal);
+//    } else {
+//      move_base_lite_msgs::MoveBaseResult result;
+//      result.result.val = move_base_lite_msgs::ErrorCodes::PLANNING_FAILED;
+//      move_base_action_server_->setAborted(result, "Failed to compute path.");
+//    }
+//  } else {
+//    // NO_PLANNNING_FORWARD_GOAL
+//    // Push original target pose into path to follow
+//    follow_path_goal.target_path.poses.push_back(current_goal_);
+//    sendActionToController(follow_path_goal);
+//  }
+
+}
+
+void MoveBaseLiteRos::moveBaseMultiGoalCancelCB() {
+  if (move_base_multi_goal_action_server_->isActive()) {
+    move_base_lite_msgs::MoveBaseMultiGoalResult result;
+    result.result.val = move_base_lite_msgs::ErrorCodes::PREEMPTED;
+    move_base_multi_goal_action_server_->setPreempted(result, "preempt from incoming message to server");
+    if (follow_path_client_->isServerConnected()){
+      follow_path_client_->cancelAllGoals();
+    }
+  } else {
     ROS_WARN("[move_base_lite] Cancel request although server ist not active!");
   }
 }
@@ -164,6 +240,10 @@ void MoveBaseLiteRos::followPathDoneCb(const actionlib::SimpleClientGoalState& s
       move_base_lite_msgs::MoveBaseResult result;
       result.result.val = move_base_lite_msgs::ErrorCodes::SUCCESS;
       move_base_action_server_->setSucceeded(result, "reached goal");
+    } else if (move_base_multi_goal_action_server_->isActive()) {
+      move_base_lite_msgs::MoveBaseMultiGoalResult result;
+      result.result.val = move_base_lite_msgs::ErrorCodes::SUCCESS;
+      move_base_multi_goal_action_server_->setSucceeded(result, "reached goal");
     } else if (explore_action_server_->isActive()) {
       // If we reach our current goal, wait for the next map to update our path
         ROS_INFO_STREAM("Reached current exploration goal, waiting for next map update");
@@ -191,6 +271,22 @@ void MoveBaseLiteRos::followPathDoneCb(const actionlib::SimpleClientGoalState& s
         }
       }
     }
+    if (move_base_multi_goal_action_server_->isActive()) {
+      follow_path_goal.follow_path_options = follow_path_options_;
+      if (move_base_multi_goal_action_goal_->plan_path_options.planning_approach == move_base_lite_msgs::PlanPathOptions::NO_PLANNNING_FORWARD_GOAL) {
+        // TODO implement NO_PLANNNING_FORWARD_GOAL
+//        follow_path_goal.target_path.poses.push_back(current_goal_);
+//        sendActionToController(follow_path_goal);
+      } else {
+        if (generatePlanToGoals(current_goals_, follow_path_goal)) {
+          sendActionToController(follow_path_goal);
+        } else {
+          move_base_lite_msgs::MoveBaseResult result;
+          result.result.val = move_base_lite_msgs::ErrorCodes::PLANNING_FAILED;
+          move_base_action_server_->setAborted(result, "Planning failed when trying to replan after control failure.");
+        }
+      }
+    }
     if (explore_action_server_->isActive()) {
       move_base_lite_msgs::ExploreResult result;
       result.result.val = move_base_lite_msgs::ErrorCodes::PLANNING_FAILED;
@@ -202,7 +298,11 @@ void MoveBaseLiteRos::followPathDoneCb(const actionlib::SimpleClientGoalState& s
       move_base_lite_msgs::MoveBaseResult result;
       result.result.val = result_in->result.val;
       move_base_action_server_->setAborted(result, "Controller failed with message: " + state.getText());
-    }else if (explore_action_server_->isActive()){
+    } else if (move_base_multi_goal_action_server_->isActive()){
+      move_base_lite_msgs::MoveBaseMultiGoalResult result;
+      result.result.val = result_in->result.val;
+      move_base_multi_goal_action_server_->setAborted(result, "Controller failed with message: " + state.getText());
+    } else if (explore_action_server_->isActive()){
       move_base_lite_msgs::ExploreResult result;
       result.result.val = result_in->result.val;
       explore_action_server_->setAborted(result, "Controller failed with message: " + state.getText());
@@ -293,8 +393,11 @@ void MoveBaseLiteRos::simple_goalCB(const geometry_msgs::PoseStampedConstPtr &si
 
 void MoveBaseLiteRos::exploreGoalCB() {
   ROS_DEBUG("[move_base_lite] In ActionServer explore callback");
-  if (move_base_action_server_->isActive()){
+  if (move_base_action_server_->isActive()) {
     moveBaseCancelCB();
+  }
+  if (move_base_multi_goal_action_server_->isActive()) {
+    moveBaseMultiGoalCancelCB();
   }
 
   explore_action_goal_ = explore_action_server_->acceptNewGoal();
@@ -401,6 +504,34 @@ bool MoveBaseLiteRos::generatePlanToGoal(geometry_msgs::PoseStamped& goal_pose, 
   return true;
 }
 
+bool MoveBaseLiteRos::generatePlanToGoals(nav_msgs::Path& goal_poses, move_base_lite_msgs::FollowPathGoal& goal) {
+  geometry_msgs::PoseStamped current_pose;
+
+  if (!getPose (current_pose)){
+    ROS_ERROR("[move_base_lite] Could not retrieve robot pose, aborting planning.");
+    return false;
+  }
+
+  goal.target_path.header.frame_id = grid_map_planner_->getPlanningMap().getFrameId();
+  goal.target_path.header.stamp = current_pose.header.stamp;
+  goal.target_path.poses.push_back(current_pose);
+
+  for (const auto& goal_pose: goal_poses.poses) {
+    geometry_msgs::PoseStamped last_pose = goal.target_path.poses.back();
+    goal.target_path.poses.pop_back();
+    nav_msgs::Path path_piece;
+    if (!this->makePlan(last_pose.pose, goal_pose.pose, path_piece.poses))
+    {
+      ROS_ERROR("[move_base_lite] Planning to goal pose failed, aborting planning.");
+      return false;
+    }
+    goal.target_path.poses.insert(goal.target_path.poses.end(), path_piece.poses.begin(), path_piece.poses.end());
+  }
+
+  return true;
+}
+
+
 void MoveBaseLiteRos::sendActionToController(const move_base_lite_msgs::FollowPathGoal& goal)
 {
   drivepath_pub_.publish(goal.target_path);
@@ -417,7 +548,7 @@ void MoveBaseLiteRos::mapCallback(const nav_msgs::OccupancyGridConstPtr& msg)
   grid_map::GridMap occupancy_map;
   grid_map::GridMapRosConverter::fromOccupancyGrid(*msg, std::string("occupancy"), occupancy_map);
   grid_map_planner_->setMap(occupancy_map);
-  if (p_replan_on_new_map_ && (move_base_action_server_->isActive() || explore_action_server_->isActive())) {
+  if (p_replan_on_new_map_ && (move_base_action_server_->isActive() || move_base_multi_goal_action_server_->isActive() || explore_action_server_->isActive())) {
     ROS_DEBUG("[move_base_lite] Planning new path");
 
     move_base_lite_msgs::FollowPathGoal follow_path_goal;
@@ -427,6 +558,13 @@ void MoveBaseLiteRos::mapCallback(const nav_msgs::OccupancyGridConstPtr& msg)
       follow_path_goal.follow_path_options.reset_stuck_history = false; // Do not reset on re-planning
 
       if (generatePlanToGoal(current_goal_, follow_path_goal)){
+        success = true;
+      }
+    } else if (move_base_multi_goal_action_server_->isActive() && move_base_multi_goal_action_goal_->plan_path_options.planning_approach == move_base_lite_msgs::PlanPathOptions::DEFAULT_COLLISION_FREE) {
+      follow_path_goal.follow_path_options = follow_path_options_;
+      follow_path_goal.follow_path_options.reset_stuck_history = false; // Do not reset on re-planning
+
+      if (generatePlanToGoals(current_goals_, follow_path_goal)){
         success = true;
       }
     } else {
@@ -489,6 +627,23 @@ void MoveBaseLiteRos::handleNullOrientation(geometry_msgs::PoseStamped& goal_pos
     goal_pose.pose.orientation.w = 1.0;
   }
 }
+
+void MoveBaseLiteRos::handleNullOrientation(nav_msgs::Path& goal_poses, move_base_lite_msgs::FollowPathOptions& options)
+{
+  // Decide path following options by last goal
+  handleNullOrientation(goal_poses.poses.back(), options);
+  // Ignore the others, but fix quaternion
+  for (auto& pose: goal_poses.poses) {
+    if (pose.pose.orientation.x == 0.0 &&
+        pose.pose.orientation.y == 0.0 &&
+        pose.pose.orientation.z == 0.0 &&
+        pose.pose.orientation.w == 0.0)
+    {
+      pose.pose.orientation.w = 1.0;
+    }
+  }
+}
+
 
 bool MoveBaseLiteRos::transformGoal(geometry_msgs::PoseStamped& goal_pose, const std::string& target_frame_id)
 {

@@ -26,6 +26,7 @@ add_action_files(
   FILES
     FollowPath.action
     MoveBase.action
+    MoveBaseMultiGoal.action
     Explore.action
 )
 
