@@ -318,7 +318,24 @@ void MoveBaseLiteRos::followPathActiveCb()
 
 void MoveBaseLiteRos::followPathFeedbackCb(const move_base_lite_msgs::FollowPathFeedbackConstPtr& feedback)
 {
+  if (move_base_multi_goal_action_server_->isActive() && !current_goals_.poses.empty()) {
+    // Remove intermediate goals that are already reached
+    geometry_msgs::PoseStamped current_pose;
+    if (!getPose(current_pose)){
+      ROS_ERROR_STREAM("Unable to retrieve robot pose in move_base_lite");
+      return;
+    }
+    while (current_goals_.poses.size() > 1) { // Always preserve last goal
+      double distance_to_next_goal = compute2DDistance(current_pose.pose.position, current_goals_.poses.front().pose.position);
+      if (distance_to_next_goal < 2 * follow_path_options_.goal_pose_position_tolerance) { // More leeway within path
+        current_goals_.poses.erase(current_goals_.poses.begin());
+        ROS_INFO_STREAM("Reached intermediate goal.");
+      } else {
+        break;
+      }
+    }
 
+  }
 }
 
 void MoveBaseLiteRos::simple_goalCB(const geometry_msgs::PoseStampedConstPtr &simpleGoal)
@@ -538,7 +555,7 @@ void MoveBaseLiteRos::sendActionToController(const move_base_lite_msgs::FollowPa
   follow_path_client_->sendGoal(goal,
                                 boost::bind(&MoveBaseLiteRos::followPathDoneCb, this, _1, _2),
                                 actionlib::SimpleActionClient<move_base_lite_msgs::FollowPathAction>::SimpleActiveCallback(),
-                                actionlib::SimpleActionClient<move_base_lite_msgs::FollowPathAction>::SimpleFeedbackCallback());
+                                boost::bind(&MoveBaseLiteRos::followPathFeedbackCb, this, _1));
 }
 
 void MoveBaseLiteRos::mapCallback(const nav_msgs::OccupancyGridConstPtr& msg)
@@ -658,6 +675,12 @@ bool MoveBaseLiteRos::transformGoal(geometry_msgs::PoseStamped& goal_pose, const
     ROS_WARN_STREAM("Failed to transform goal pose: " << ex.what());
     return false;
   }
+}
+
+double MoveBaseLiteRos::compute2DDistance(const geometry_msgs::Point& point_a, const geometry_msgs::Point& point_b) {
+  double diff_x = point_b.x - point_a.x;
+  double diff_y = point_b.y - point_a.y;
+  return std::sqrt(diff_x * diff_x + diff_y * diff_y);
 }
 
 }

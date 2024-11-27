@@ -118,6 +118,7 @@ protected:
   static void handleNullOrientation(nav_msgs::Path& goal_poses, move_base_lite_msgs::FollowPathOptions& options);
   bool transformGoal(geometry_msgs::PoseStamped& goal_pose, const std::string& target_frame_id);
 
+  static double compute2DDistance(const geometry_msgs::Point& point_a, const geometry_msgs::Point& point_b);
 
 
   ros::Subscriber simple_goal_sub_;
