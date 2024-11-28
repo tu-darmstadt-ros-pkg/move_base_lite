@@ -318,7 +318,7 @@ void MoveBaseLiteRos::followPathActiveCb()
 
 void MoveBaseLiteRos::followPathFeedbackCb(const move_base_lite_msgs::FollowPathFeedbackConstPtr& feedback)
 {
-  if (move_base_multi_goal_action_server_->isActive() && !current_goals_.poses.empty()) {
+  if (move_base_multi_goal_action_server_->isActive() && current_goals_.poses.size() > 1) {
     // Remove intermediate goals that are already reached
     geometry_msgs::PoseStamped current_pose;
     if (!getPose(current_pose)){
